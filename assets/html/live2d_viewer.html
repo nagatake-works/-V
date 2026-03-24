@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Live2D Viewer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: transparent; }
+  #app { width: 100%; height: 100%; position: relative; }
+  canvas { display: block; }
+  #status {
+    position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+    color: rgba(0,229,255,0.8); font-family: monospace; font-size: 11px;
+    background: rgba(5,8,16,0.85); padding: 3px 10px; border-radius: 3px;
+    border: 1px solid rgba(0,229,255,0.3); pointer-events: none; z-index: 100;
+    transition: opacity 1s;
+  }
+  #badge {
+    position: absolute; bottom: 8px; right: 8px;
+    color: rgba(0,229,255,0.8); font-family: monospace; font-size: 10px;
+    background: rgba(5,8,16,0.8); padding: 2px 8px; border-radius: 3px;
+    border: 1px solid rgba(0,229,255,0.2); pointer-events: none; z-index: 100;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="status">INITIALIZING...</div>
+  <div id="badge">NEUTRAL</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/pixi.js@7.4.2/dist/pixi.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/cubism4.min.js"></script>
+<script src="sdk/live2dcubismcore.min.js"></script>
+
+<script>
+(async function () {
+  'use strict';
+
+  const statusEl = document.getElementById('status');
+  const badgeEl  = document.getElementById('badge');
+  const appDiv   = document.getElementById('app');
+
+  function log(msg) { statusEl.textContent = msg; }
+  function badge(t) { badgeEl.textContent  = t.toUpperCase(); }
+
+  // PIXI Application
+  const app = new PIXI.Application({
+    width: window.innerWidth,
+    height: window.innerHeight,
+    backgroundAlpha: 0,
+    antialias: true,
+    autoDensity: true,
+    resolution: window.devicePixelRatio || 1,
+  });
+  appDiv.appendChild(app.view);
+
+  window.addEventListener('resize', () => {
+    app.renderer.resize(window.innerWidth, window.innerHeight);
+    if (live2dModel) placeModel();
+  });
+
+  let live2dModel = null;
+
+  // Expression mapping: emotion key -> model expression name
+  const EXPR = {
+    happy: 'Shine', love: 'Heart', shy: 'Cheek', sad: 'Cry',
+    surprised: 'Sweat', angry: 'Anger', neutral: null,
+  };
+
+  function placeModel() {
+    if (!live2dModel) return;
+    const W = app.renderer.width;
+    const H = app.renderer.height;
+    const mw = live2dModel.internalModel.originalWidth  || 512;
+    const mh = live2dModel.internalModel.originalHeight || 512;
+    const scale = Math.min(W / mw, H / mh) * 1.15;
+    live2dModel.scale.set(scale);
+    live2dModel.x = W / 2;
+    live2dModel.y = H * 0.55;
+    live2dModel.anchor.set(0.5, 0.5);
+  }
+
+  async function loadLive2D() {
+    try {
+      log('MODEL LOADING...');
+      if (!window.PIXI || !PIXI.live2d) throw new Error('pixi-live2d-display unavailable');
+
+      // モデルJSON のパス（WebView baseUrlからの相対パスは動作しないことがある）
+      // Flutterのassetsからコンテンツを注入する方式
+      live2dModel = await PIXI.live2d.Live2DModel.from(
+        'assets/live2d/model/model_25.model3.json'
+      );
+      app.stage.addChild(live2dModel);
+      placeModel();
+
+      log('ONLINE');
+      setTimeout(() => { statusEl.style.opacity = '0'; }, 2500);
+      notifyFlutter('ready');
+
+    } catch(err) {
+      console.warn('Live2D load failed:', err.message);
+      log('FALLBACK');
+      startFallback();
+    }
+  }
+
+  // ── Fallback: Canvas 2D animation ──
+  function startFallback() {
+    const g = new PIXI.Graphics();
+    app.stage.addChild(g);
+    let t = 0;
+    let cur = { eye: 1.0, mouth: 0.1, blush: 0 };
+    let tgt = { eye: 1.0, mouth: 0.1, blush: 0 };
+
+    const FEXPR = {
+      neutral:   { eye: 1.0, mouth: 0.1, blush: 0 },
+      happy:     { eye: 0.8, mouth: 0.7, blush: 0.5 },
+      love:      { eye: 0.65,mouth: 0.6, blush: 1.0 },
+      shy:       { eye: 0.85,mouth: 0.3, blush: 0.9 },
+      sad:       { eye: 1.1, mouth: 0.15,blush: 0 },
+      surprised: { eye: 1.4, mouth: 0.8, blush: 0.3 },
+      angry:     { eye: 0.75,mouth: 0.45,blush: 0.35 },
+    };
+
+    window.setExpression = (key) => {
+      tgt = { ...(FEXPR[key] || FEXPR.neutral) };
+      badge(key);
+    };
+
+    app.ticker.add(() => {
+      t += 0.016;
+      ['eye','mouth','blush'].forEach(k => { cur[k] += (tgt[k]-cur[k])*0.1; });
+      const W = app.renderer.width, H = app.renderer.height;
+      const cx = W/2, cy = H * 0.45;
+      const R  = Math.min(W,H) * 0.22;
+      const bY = Math.sin(t*1.2)*3;
+      const blinkT = t % 4;
+      const eyeH = blinkT < 3.75 ? cur.eye : Math.max(0.05, 1-(blinkT-3.75)*20);
+
+      g.clear();
+      // 後ろ髪
+      g.beginFill(0x2a0a4a); g.drawEllipse(cx, cy+bY, R*1.15, R*1.35); g.endFill();
+      // 顔
+      g.beginFill(0xFFDDCC); g.drawEllipse(cx, cy+bY, R, R*1.05); g.endFill();
+      // 頬赤み
+      if (cur.blush > 0.1) {
+        g.beginFill(0xFF9999, cur.blush*0.4);
+        g.drawEllipse(cx-R*.42, cy+bY+R*.15, R*.22, R*.1);
+        g.drawEllipse(cx+R*.42, cy+bY+R*.15, R*.22, R*.1);
+        g.endFill();
+      }
+      // 目L
+      g.beginFill(0x1a0a3a); g.drawEllipse(cx-R*.3, cy+bY-R*.1, R*.17, R*.115*eyeH); g.endFill();
+      g.beginFill(0xFFFFFF,0.45); g.drawEllipse(cx-R*.25, cy+bY-R*.14, R*.04, R*.04); g.endFill();
+      // 目R
+      g.beginFill(0x1a0a3a); g.drawEllipse(cx+R*.3, cy+bY-R*.1, R*.17, R*.115*eyeH); g.endFill();
+      g.beginFill(0xFFFFFF,0.45); g.drawEllipse(cx+R*.25, cy+bY-R*.14, R*.04, R*.04); g.endFill();
+      // 口
+      g.beginFill(0xFF6688); g.drawEllipse(cx, cy+bY+R*.3, R*.22, Math.max(R*.025, R*.08*cur.mouth)); g.endFill();
+      // 前髪
+      g.beginFill(0x4a1a7a);
+      g.moveTo(cx-R*.75, cy+bY-R*.85);
+      g.bezierCurveTo(cx-R*.5, cy+bY-R*1.35, cx+R*.5, cy+bY-R*1.35, cx+R*.75, cy+bY-R*.85);
+      g.lineTo(cx+R*.42, cy+bY-R*.2);
+      g.bezierCurveTo(cx+R*.2, cy+bY-R*.65, cx-R*.2, cy+bY-R*.65, cx-R*.42, cy+bY-R*.2);
+      g.closePath(); g.endFill();
+    });
+
+    notifyFlutter('ready');
+  }
+
+  // ── Expression & Motion API ──
+  window.setExpression = function(key) {
+    badge(key);
+    if (!live2dModel) return;
+    try {
+      const name = EXPR[key];
+      if (name) live2dModel.expression(name);
+      else       live2dModel.expression();
+    } catch(e) { console.warn('setExpression:', e); }
+  };
+
+  window.playMotion = function(type) {
+    if (!live2dModel) return;
+    try {
+      live2dModel.motion('', 0, PIXI.live2d.MotionPriority.NORMAL);
+    } catch(e) { console.warn('playMotion:', e); }
+  };
+
+  window.setAffection = function(level) {
+    if (live2dModel && level > 75) {
+      try { live2dModel.expression('Cheek'); badge('LOVE'); } catch(e) {}
+    }
+  };
+
+  // ── Flutter通知 ──
+  function notifyFlutter(type) {
+    const msg = JSON.stringify({ type });
+    try { window.FlutterChannel.postMessage(msg); } catch(_) {}
+    try { window.parent.postMessage({ type: 'live2d_' + type }, '*'); } catch(_) {}
+  }
+
+  loadLive2D();
+})();
+</script>
+</body>
+</html>

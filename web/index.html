@@ -1,0 +1,2396 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>来鳥アルエ - Vtuber Chat</title>
+<!-- Material Symbols (Google) -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+<style>
+/* ══════════════════════════════════════════════════
+   RESET & BASE
+══════════════════════════════════════════════════ */
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent!important;tap-highlight-color:transparent!important;outline:none;}
+html,body{
+  width:100%;height:100%;overflow:hidden;
+  background:#070b18;
+  font-family:'Hiragino Kaku Gothic Pro','Noto Sans JP','Meiryo',sans-serif;
+  color:#ddeeff;
+  touch-action:none;
+  user-select:none;
+  -webkit-user-select:none;
+  -webkit-tap-highlight-color:transparent;
+  tap-highlight-color:transparent;
+}
+.material-symbols-rounded{
+  font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24;
+  vertical-align:middle;
+  line-height:1;
+}
+
+/* ══════════════════════════════════════════════════
+   SPLASH
+══════════════════════════════════════════════════ */
+#splash{
+  position:fixed;inset:0;z-index:9999;
+  background:#070b18;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  transition:opacity 1s ease;
+}
+#splash.hide{opacity:0;pointer-events:none;}
+/* KimitV スプラッシュロゴ */
+.splash-logo-wrap{
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:4px;
+}
+.splash-logo-img{
+  width:260px;max-width:80vw;
+  filter:drop-shadow(0 0 30px rgba(200,160,255,.6)) drop-shadow(0 0 60px rgba(168,216,255,.3));
+  animation:logoFloat 3s ease-in-out infinite;
+}
+@keyframes logoFloat{
+  0%,100%{transform:translateY(0);}
+  50%{transform:translateY(-8px);}
+}
+/* ヘッダーロゴ */
+.topbar-logo{
+  height:22px;
+  filter:drop-shadow(0 0 8px rgba(200,160,255,.5));
+  vertical-align:middle;
+}
+.splash-line{
+  width:180px;height:1px;margin:18px 0;
+  background:linear-gradient(90deg,transparent,rgba(168,216,255,.5),transparent);
+}
+.boot-log{
+  width:260px;
+  background:rgba(10,18,40,.6);
+  border:1px solid rgba(168,216,255,.12);
+  border-radius:6px;padding:12px;
+  backdrop-filter:blur(10px);
+}
+.boot-line{
+  font-size:10px;font-family:monospace;
+  color:rgba(168,216,255,.5);padding:2px 0;
+  opacity:0;transition:opacity .4s;
+}
+.boot-line.show{opacity:1;}
+.boot-line.ok{color:rgba(100,255,180,.8);}
+
+/* ══════════════════════════════════════════════════
+   LAYOUT
+══════════════════════════════════════════════════ */
+#app{
+  position:fixed;inset:0;
+  display:flex;flex-direction:column;
+}
+
+/* ── TOPBAR ── */
+#topbar{
+  height:42px;
+  background:rgba(7,11,24,.75);
+  border-bottom:1px solid rgba(168,216,255,.08);
+  display:flex;align-items:center;
+  padding:0 10px;gap:8px;
+  flex-shrink:0;z-index:100;
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+}
+#sit-btn{
+  display:flex;align-items:center;gap:4px;
+  padding:4px 10px;border-radius:20px;cursor:pointer;
+  background:rgba(168,216,255,.06);
+  border:1px solid rgba(168,216,255,.15);
+  font-size:11px;color:rgba(168,216,255,.6);
+  transition:all .25s;
+  -webkit-tap-highlight-color:transparent;
+}
+#sit-btn:hover,#sit-btn.active{
+  background:rgba(168,216,255,.14);
+  border-color:rgba(168,216,255,.45);
+  color:#a8d8ff;
+}
+.topbar-title{
+  flex:1;text-align:center;
+  font-size:12px;letter-spacing:3px;
+  color:rgba(168,216,255,.65);font-weight:700;
+}
+#affection-bar-wrap{display:flex;align-items:center;gap:5px;}
+.aff-label{font-size:10px;color:rgba(168,216,255,.4);}
+#affection-bar{
+  width:50px;height:4px;
+  background:rgba(255,255,255,.06);
+  border-radius:2px;overflow:hidden;
+}
+#affection-fill{
+  height:100%;width:50%;
+  background:linear-gradient(90deg,#7b6bff,#ff80c8);
+  border-radius:2px;transition:width .8s ease;
+}
+#aff-num{font-size:10px;color:rgba(168,216,255,.5);min-width:18px;}
+
+/* ══════════════════════════════════════════════════
+   CHARACTER AREA
+══════════════════════════════════════════════════ */
+#character-area{
+  flex:1 1 0;
+  position:relative;
+  overflow:hidden;
+  min-height:0;
+  /* デフォルト背景 */
+  background:#070b18;
+}
+
+/* 背景画像レイヤー */
+#bg-layer{
+  position:absolute;inset:0;
+  z-index:0;
+  overflow:hidden;
+}
+/* 静止画背景（video非対応シチュエーション用） */
+#bg-img{
+  position:absolute;inset:0;
+  background-size:cover;
+  background-position:center top;
+  background-repeat:no-repeat;
+  transition:opacity .8s ease;
+  width:100%;height:100%;
+}
+/* 動画背景 */
+#bg-video{
+  position:absolute;inset:0;
+  width:100%;height:100%;
+  object-fit:cover;
+  object-position:center top;
+  opacity:0;
+  transition:opacity .8s ease;
+  z-index:1;
+}
+#bg-video.active{ opacity:1; }
+#bg-layer::after{
+  content:'';
+  position:absolute;inset:0;
+  background:linear-gradient(180deg,
+    rgba(7,11,24,.25) 0%,
+    rgba(7,11,24,.15) 50%,
+    rgba(7,11,24,.7) 100%);
+  z-index:2;
+  pointer-events:none;
+}
+
+/* スキャンライン */
+#scanline{
+  position:absolute;inset:0;pointer-events:none;z-index:1;
+  background:repeating-linear-gradient(0deg,
+    transparent,transparent 3px,
+    rgba(168,216,255,.007) 3px,rgba(168,216,255,.007) 4px);
+}
+
+/* Live2D ローディング */
+#live2d-loading{
+  position:absolute;inset:0;z-index:50;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  background:linear-gradient(180deg,#070b18 0%,#0c1224 60%,#070b18 100%);
+  transition:opacity .9s ease;
+  overflow:hidden;
+  cursor:pointer;
+  user-select:none;
+  -webkit-user-select:none;
+}
+#live2d-loading.hidden{opacity:0;pointer-events:none;}
+
+/* ── スコア表示（右上） ── */
+#loading-score{
+  position:absolute;top:14px;right:16px;
+  display:flex;flex-direction:column;align-items:flex-end;gap:2px;
+  pointer-events:none;
+}
+#loading-score-label{
+  font-size:8px;letter-spacing:2px;color:rgba(168,216,255,.4);font-family:monospace;
+}
+#loading-score-val{
+  font-size:22px;font-weight:800;letter-spacing:1px;
+  color:#a8d8ff;
+  text-shadow:0 0 16px rgba(168,216,255,.6);
+  font-family:monospace;
+  transition:transform .1s;
+}
+#loading-score-val.pop{animation:scorePop .25s ease;}
+@keyframes scorePop{0%{transform:scale(1)}50%{transform:scale(1.4)}100%{transform:scale(1)}}
+
+/* ── 中央メインキャラ ── */
+#loading-main-char{
+  width:140px;height:140px;
+  position:relative;z-index:2;
+  pointer-events:none;
+}
+#loading-main-char img{
+  width:100%;height:100%;object-fit:contain;
+  animation:mainBounce 0.55s ease-in-out infinite alternate;
+  filter:drop-shadow(0 8px 24px rgba(168,216,255,.35));
+}
+@keyframes mainBounce{
+  0%  {transform:translateY(0)    scaleY(1)    scaleX(1);}
+  70% {transform:translateY(-28px) scaleY(1.06) scaleX(0.96);}
+  100%{transform:translateY(-32px) scaleY(1.08) scaleX(0.95);}
+}
+/* 着地スカッシュ */
+#loading-main-char img.squish{animation:mainSquish .2s ease;}
+@keyframes mainSquish{
+  0%  {transform:scaleX(1)   scaleY(1);}
+  40% {transform:scaleX(1.4) scaleY(0.55);}
+  70% {transform:scaleX(0.92) scaleY(1.1);}
+  100%{transform:scaleX(1)   scaleY(1);}
+}
+/* 影 */
+#loading-main-shadow{
+  width:80px;height:12px;
+  background:radial-gradient(ellipse,rgba(168,216,255,.25) 0%,transparent 70%);
+  border-radius:50%;
+  margin-top:-4px;
+  animation:shadowPulse 0.55s ease-in-out infinite alternate;
+  pointer-events:none;
+}
+@keyframes shadowPulse{
+  0%  {transform:scaleX(1);   opacity:.7;}
+  100%{transform:scaleX(0.6); opacity:.3;}
+}
+
+/* タップ誘導テキスト */
+#loading-tap-hint{
+  margin-top:14px;
+  font-size:10px;letter-spacing:3px;
+  color:rgba(168,216,255,.45);font-family:monospace;
+  animation:hintBlink 1.8s ease-in-out infinite;
+  pointer-events:none;
+}
+@keyframes hintBlink{0%,100%{opacity:.8}50%{opacity:.25}}
+
+/* プログレスバー */
+.l2d-bar-wrap{width:100px;height:2px;background:rgba(168,216,255,.1);border-radius:1px;margin-top:18px;overflow:hidden;}
+.l2d-bar{height:100%;width:0%;background:linear-gradient(90deg,#7b6bff,#a8d8ff);border-radius:1px;transition:width .4s ease;}
+.l2d-sub{font-size:9px;letter-spacing:1.5px;color:rgba(168,216,255,.3);font-family:monospace;margin-top:8px;}
+
+/* ── タップで落下する小キャラ ── */
+.falling-chibi{
+  position:absolute;
+  width:40px;height:40px;
+  pointer-events:none;
+  z-index:3;
+  will-change:transform,opacity;
+}
+.falling-chibi img{width:100%;height:100%;object-fit:contain;}
+
+/* ── 着地して積まれたキャラ ── */
+#chibi-pile{
+  position:absolute;
+  bottom:0;left:0;right:0;
+  height:160px;
+  pointer-events:none;
+  z-index:4;
+}
+.piled-chibi{
+  position:absolute;
+  bottom:0;
+  width:40px;height:40px;
+  pointer-events:none;
+}
+.piled-chibi img{width:100%;height:100%;object-fit:contain;}
+
+/* 旧互換 */
+#chibi-stack-wrap{display:none;}
+.chibi-unit{display:none;}
+@keyframes chibi-drop{0%{opacity:0;transform:translateY(-80px)}100%{opacity:1;transform:translateY(0)}}
+@keyframes chibi-bounce{0%,100%{transform:translateY(0)}40%{transform:translateY(-8px)}70%{transform:translateY(3px)}}
+@keyframes chibi-squish{0%{transform:scaleX(1) scaleY(1)}30%{transform:scaleX(1.3) scaleY(.6)}100%{transform:scaleX(1) scaleY(1)}}
+
+/* Live2D canvas wrap */
+#live2d-canvas-wrap{
+  position:absolute;inset:0;z-index:2;
+  /* タップイベントを遮断しない */
+  pointer-events:none;
+}
+#live2d-canvas-wrap canvas{width:100%!important;height:100%!important;display:block;}
+
+/* タップ波紋 */
+.tap-ripple{
+  position:absolute;
+  border-radius:50%;
+  background:rgba(168,216,255,.35);
+  transform:scale(0);
+  animation:ripple-expand .6s ease-out forwards;
+  pointer-events:none;z-index:30;
+}
+@keyframes ripple-expand{
+  to{transform:scale(4);opacity:0;}
+}
+
+/* HUD */
+.hud-tag{
+  position:absolute;
+  display:flex;align-items:center;gap:4px;
+  padding:3px 8px;border-radius:3px;
+  font-size:9px;letter-spacing:1.5px;
+  pointer-events:none;z-index:10;
+  backdrop-filter:blur(8px);
+}
+.hud-tag-live2d{top:8px;left:10px;background:rgba(7,11,24,.5);border:1px solid rgba(100,255,160,.2);color:rgba(100,255,160,.7);display:none;}
+.hud-tag-ai{top:8px;right:10px;background:rgba(7,11,24,.5);border:1px solid rgba(168,216,255,.2);color:rgba(168,216,255,.7);display:none;}
+.hud-dot{width:4px;height:4px;border-radius:50%;}
+.hud-dot-green{background:#64ffa0;box-shadow:0 0 6px #64ffa0;}
+.hud-dot-cyan{background:#a8d8ff;box-shadow:0 0 6px #a8d8ff;}
+
+/* ネームプレート */
+#name-plate{
+  position:absolute;bottom:12px;left:50%;transform:translateX(-50%);
+  padding:5px 22px;
+  background:rgba(7,11,24,.5);
+  border:1px solid rgba(168,216,255,.18);
+  border-radius:20px;
+  text-align:center;pointer-events:none;z-index:10;
+  backdrop-filter:blur(12px);
+}
+.name-main{font-size:12px;letter-spacing:5px;color:rgba(168,216,255,.9);font-weight:600;}
+.name-sub{font-size:8px;letter-spacing:2px;color:rgba(168,216,255,.45);margin-top:1px;}
+
+/* ──── スタンプパネル ──── */
+#stamp-panel{
+  display:none;
+  position:absolute;bottom:0;left:0;right:0;z-index:300;
+  background:rgba(7,11,24,.92);
+  border-top:1px solid rgba(168,216,255,.15);
+  padding:10px 12px 16px;
+  backdrop-filter:blur(20px);
+}
+#stamp-panel.open{display:block;}
+.stamp-header{
+  display:flex;align-items:center;gap:6px;margin-bottom:8px;
+}
+.stamp-title{font-size:10px;letter-spacing:2px;color:rgba(168,216,255,.6);}
+.stamp-close{
+  margin-left:auto;cursor:pointer;
+  color:rgba(168,216,255,.4);font-size:16px;
+  -webkit-tap-highlight-color:transparent;
+}
+.stamp-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:8px;
+}
+.stamp-item{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  cursor:pointer;padding:6px;border-radius:10px;
+  border:1px solid rgba(168,216,255,.08);
+  background:rgba(168,216,255,.03);
+  transition:all .2s;
+  -webkit-tap-highlight-color:transparent;
+}
+.stamp-item:hover,.stamp-item:active{
+  background:rgba(168,216,255,.12);border-color:rgba(168,216,255,.4);
+}
+.stamp-item img{width:72px;height:72px;object-fit:contain;}
+.stamp-item-label{font-size:9px;color:rgba(168,216,255,.5);letter-spacing:1px;}
+
+/* スタンプ送信アニメーション */
+.stamp-sent-overlay{
+  position:fixed;inset:0;z-index:500;pointer-events:none;
+  display:flex;align-items:center;justify-content:center;
+}
+.stamp-anim-img{
+  width:220px;height:220px;object-fit:contain;
+  animation:stamp-pop .7s ease-out forwards;
+}
+@keyframes stamp-pop{
+  0%{transform:scale(0.2) rotate(-15deg);opacity:0;}
+  60%{transform:scale(1.15) rotate(5deg);opacity:1;}
+  80%{transform:scale(0.95) rotate(-2deg);opacity:1;}
+  100%{transform:scale(1) rotate(0);opacity:1;}
+}
+.stamp-fade-out{animation:stamp-fadeout .5s ease-in forwards!important;}
+@keyframes stamp-fadeout{
+  0%{opacity:1;transform:scale(1);}
+  100%{opacity:0;transform:scale(1.3) translateY(-30px);}
+}
+
+/* スタンプボタン（入力エリア） */
+#stamp-btn{
+  width:38px;height:38px;flex-shrink:0;
+  background:rgba(168,216,255,.06);
+  border:1px solid rgba(168,216,255,.2);
+  border-radius:50%;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .2s;color:rgba(168,216,255,.6);
+  -webkit-tap-highlight-color:transparent;
+}
+#stamp-btn:hover{background:rgba(168,216,255,.16);color:#a8d8ff;}
+#stamp-btn .material-symbols-rounded{font-size:20px;}
+
+/* 音声ボタン */
+#voice-btn{
+  position:absolute;top:8px;right:10px;z-index:15;
+  width:28px;height:28px;
+  background:rgba(7,11,24,.55);
+  border:1px solid rgba(168,216,255,.2);
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:rgba(168,216,255,.6);
+  backdrop-filter:blur(8px);
+  transition:all .2s;
+  -webkit-tap-highlight-color:transparent;
+}
+#voice-btn:hover{background:rgba(168,216,255,.14);color:#a8d8ff;}
+#voice-btn .material-symbols-rounded{font-size:16px;}
+#voice-btn.speaking{
+  border-color:rgba(168,216,255,.6);
+  box-shadow:0 0 12px rgba(168,216,255,.3);
+  animation:voice-pulse 1.2s ease-in-out infinite;
+}
+@keyframes voice-pulse{
+  0%,100%{box-shadow:0 0 8px rgba(168,216,255,.2);}
+  50%{box-shadow:0 0 20px rgba(168,216,255,.5);}
+}
+
+/* バストアップ固定 - スクロールインジケータ非表示 */
+#bust-indicator{
+  position:absolute;bottom:55px;left:50%;transform:translateX(-50%);
+  font-size:9px;letter-spacing:1.5px;color:rgba(168,216,255,.3);
+  pointer-events:none;z-index:10;
+}
+
+
+/* ══════════════════════════════════════════════════
+   CHAT AREA
+══════════════════════════════════════════════════ */
+#chat-area{
+  position:absolute;
+  bottom:0;
+  left:0;
+  right:0;
+  display:flex;flex-direction:column;
+  background:rgba(5,8,20,.97);
+  border-top:1px solid rgba(168,216,255,.12);
+  backdrop-filter:blur(28px);
+  -webkit-backdrop-filter:blur(28px);
+  z-index:50;
+  max-height:23vh;
+}
+/* ローディング中はチャットUI全体を非表示 */
+body.loading #chat-area{
+  display:none!important;
+}
+
+/* ══════════════════════════════════════
+   LINE型チャット (常時表示スクロール)
+══════════════════════════════════════ */
+/* タイピングインジケーター */
+#typing-indicator{display:none;align-items:center;gap:4px;padding:4px 12px;}
+#typing-indicator.show{display:flex;}
+.t-dot{width:5px;height:5px;border-radius:50%;background:rgba(168,216,255,.6);animation:tDot 1.2s infinite;}
+.t-dot:nth-child(2){animation-delay:.2s;}
+.t-dot:nth-child(3){animation-delay:.4s;}
+@keyframes tDot{0%,80%,100%{opacity:.3;transform:scale(.7)}40%{opacity:1;transform:scale(1)}}
+
+/* チャットスクロールエリア */
+#chat-scroll-area{
+  flex:1 1 auto;
+  overflow-y:auto;
+  padding:8px 10px 4px;
+  display:flex;flex-direction:column;
+  gap:6px;
+  scroll-behavior:smooth;
+  min-height:0;
+  background:rgba(4,7,18,.6);
+}
+#chat-scroll-area::-webkit-scrollbar{width:3px;}
+#chat-scroll-area::-webkit-scrollbar-track{background:transparent;}
+#chat-scroll-area::-webkit-scrollbar-thumb{background:rgba(168,216,255,.2);border-radius:2px;}
+
+/* ユーザーバブル（右） */
+.bubble-user{display:flex;justify-content:flex-end;animation:bubblePop .2s ease;}
+.bubble-user-inner{
+  max-width:78%;padding:8px 14px;
+  background:rgba(123,107,255,.25);
+  border:1px solid rgba(123,107,255,.45);
+  border-radius:16px 4px 16px 16px;
+  font-size:13px;line-height:1.6;color:rgba(230,220,255,.95);
+  word-break:break-word;
+}
+/* AIバブル（左） */
+.bubble-ai{display:flex;gap:8px;align-items:flex-end;animation:bubblePop .2s ease;}
+.bubble-ai-avatar{
+  width:26px;height:26px;flex-shrink:0;
+  background:rgba(168,216,255,.1);
+  border:1px solid rgba(168,216,255,.25);
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;
+}
+.bubble-ai-inner{
+  max-width:80%;padding:8px 14px;
+  background:rgba(168,216,255,.08);
+  border:1px solid rgba(168,216,255,.2);
+  border-radius:4px 16px 16px 16px;
+  font-size:13px;line-height:1.6;color:rgba(210,235,255,.9);
+  word-break:break-word;
+  transition:border-color .4s ease;
+}
+.bubble-ai-inner.speaking{border-color:rgba(168,216,255,.5);}
+@keyframes bubblePop{from{opacity:0;transform:scale(.95) translateY(4px)}to{opacity:1;transform:scale(1) translateY(0)}}
+
+/* 旧互換 (bubble-ai-small) */
+.bubble-ai-small{display:flex;margin:0;}
+.bubble-ai-small-inner{display:none;}
+
+/* エラー */
+#error-msg{
+  display:none;margin:3px 12px;padding:5px 11px;
+  background:rgba(40,8,8,.7);border:1px solid rgba(255,100,100,.25);
+  border-radius:6px;font-size:11px;color:rgba(255,140,140,.8);
+  align-items:center;gap:8px;
+}
+#error-msg.show{display:flex;}
+#error-close{cursor:pointer;margin-left:auto;color:rgba(255,100,100,.6);}
+
+/* 入力エリア */
+#input-area{
+  padding:6px 10px 10px;
+  display:flex;gap:8px;align-items:flex-end;flex-shrink:0;
+}
+#msg-input{
+  flex:1;
+  background:rgba(168,216,255,.05);
+  border:1px solid rgba(168,216,255,.18);
+  border-radius:20px;
+  padding:9px 16px;
+  font-size:13.5px;color:rgba(220,238,255,.9);
+  font-family:inherit;outline:none;resize:none;
+  max-height:80px;min-height:36px;
+  transition:border-color .2s,background .2s;
+  line-height:1.4;
+}
+#msg-input:focus{border-color:rgba(168,216,255,.45);background:rgba(168,216,255,.09);}
+#msg-input::placeholder{color:rgba(168,216,255,.22);}
+#send-btn{
+  width:38px;height:38px;flex-shrink:0;
+  background:rgba(168,216,255,.08);
+  border:1px solid rgba(168,216,255,.35);
+  border-radius:50%;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .2s;
+  color:rgba(168,216,255,.8);
+  -webkit-tap-highlight-color:transparent;
+}
+#send-btn:hover:not(:disabled){background:rgba(168,216,255,.2);border-color:rgba(168,216,255,.7);box-shadow:0 0 14px rgba(168,216,255,.25);}
+#send-btn:disabled{border-color:rgba(168,216,255,.1);color:rgba(168,216,255,.2);cursor:default;}
+#send-btn .material-symbols-rounded{font-size:20px;}
+
+/* BGMトグル */
+#bgm-btn{
+  position:absolute;top:8px;right:44px;z-index:15;
+  width:28px;height:28px;
+  background:rgba(7,11,24,.55);
+  border:1px solid rgba(168,216,255,.2);
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:rgba(168,216,255,.6);
+  backdrop-filter:blur(8px);
+  transition:all .2s;
+  -webkit-tap-highlight-color:transparent;
+}
+#bgm-btn:hover{background:rgba(168,216,255,.14);color:#a8d8ff;}
+#bgm-btn .material-symbols-rounded{font-size:16px;}
+
+/* シチュエーションパネル */
+#sit-panel{
+  display:none;
+  position:absolute;top:42px;left:0;right:0;
+  background:rgba(7,11,24,.92);
+  border-bottom:1px solid rgba(168,216,255,.12);
+  padding:12px;z-index:200;
+  backdrop-filter:blur(24px);
+}
+#sit-panel.open{display:block;}
+.sit-header{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.sit-bar{width:2px;height:13px;background:rgba(168,216,255,.6);border-radius:1px;}
+.sit-title{font-size:10px;letter-spacing:2px;color:rgba(168,216,255,.7);}
+.sit-grid{display:flex;flex-wrap:wrap;gap:6px;}
+.sit-item{
+  display:flex;align-items:center;gap:6px;
+  padding:7px 11px;border-radius:10px;cursor:pointer;
+  background:rgba(168,216,255,.04);
+  border:1px solid rgba(168,216,255,.12);
+  transition:all .2s;
+  -webkit-tap-highlight-color:transparent;
+}
+.sit-item:hover,.sit-item.active{background:rgba(168,216,255,.12);border-color:rgba(168,216,255,.5);}
+.sit-item-emoji{font-size:15px;}
+.sit-item-name{font-size:11px;color:rgba(220,238,255,.8);}
+.sit-item.active .sit-item-name{color:#a8d8ff;font-weight:600;}
+.sit-item-sub{font-size:8px;color:rgba(168,216,255,.4);letter-spacing:.5px;}
+</style>
+</head>
+<body class="loading">
+
+<!-- SPLASH -->
+<div id="splash">
+  <div class="splash-logo-wrap">
+    <img src="img/kimitv_logo.png" alt="KimitV" class="splash-logo-img">
+  </div>
+  <div class="splash-line"></div>
+  <div class="boot-log" id="boot-log"></div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+
+  <!-- トップバー -->
+  <div id="topbar">
+    <div id="sit-btn" onclick="toggleSitPanel()">
+      <span id="sit-emoji">🌸</span>
+      <span id="sit-name">日常</span>
+      <span class="material-symbols-rounded" style="font-size:14px;color:rgba(168,216,255,.35)">expand_more</span>
+    </div>
+    <div class="topbar-title">
+      <img src="img/kimitv_logo.png" alt="KimitV" class="topbar-logo">
+    </div>
+    <div id="affection-bar-wrap">
+      <span class="material-symbols-rounded" style="font-size:13px;color:rgba(255,150,200,.6)">favorite</span>
+      <div id="affection-bar"><div id="affection-fill"></div></div>
+      <div class="aff-label" id="aff-num">50</div>
+    </div>
+  </div>
+
+  <!-- シチュエーションパネル -->
+  <div id="sit-panel">
+    <div class="sit-header">
+      <div class="sit-bar"></div>
+      <div class="sit-title">SITUATION SELECT</div>
+    </div>
+    <div class="sit-grid" id="sit-grid"></div>
+  </div>
+
+  <!-- キャラクターエリア -->
+  <div id="character-area">
+    <div id="bg-layer">
+      <div id="bg-img"></div>
+      <video id="bg-video" autoplay loop muted playsinline></video>
+    </div>
+    <div id="scanline"></div>
+
+    <!-- Live2D ローディング -->
+    <div id="live2d-loading">
+
+      <!-- 右上スコア -->
+      <div id="loading-score">
+        <div id="loading-score-label">SCORE</div>
+        <div id="loading-score-val">0</div>
+      </div>
+
+      <!-- 中央メインキャラ（ぴょんぴょん） -->
+      <div id="loading-main-char">
+        <img src="img/arue_chibi.png" alt="アルエ" id="loading-main-img">
+      </div>
+      <div id="loading-main-shadow"></div>
+
+      <!-- タップ誘導 -->
+      <div id="loading-tap-hint">TAP TO PLAY !</div>
+
+      <!-- プログレスバー -->
+      <div class="l2d-bar-wrap"><div class="l2d-bar" id="l2d-bar"></div></div>
+      <div class="l2d-sub" id="l2d-status-sub">INITIALIZING...</div>
+
+      <!-- 着地積みエリア（画面全体） -->
+      <div id="chibi-pile"></div>
+
+      <!-- 旧互換（非表示） -->
+      <div id="chibi-stack-wrap" style="display:none"></div>
+
+    </div>
+
+    <!-- Live2D canvas (pointer-events:none でタップを下に通す) -->
+    <div id="live2d-canvas-wrap"></div>
+
+    <!-- タップ用透明オーバーレイ -->
+    <div id="tap-overlay" style="position:absolute;inset:0;z-index:5;"></div>
+
+    <!-- BGMボタン -->
+    <div id="bgm-btn" onclick="toggleBGM()" title="BGM">
+      <span class="material-symbols-rounded" id="bgm-icon">music_note</span>
+    </div>
+
+    <!-- 音声ボタン -->
+    <div id="voice-btn" onclick="toggleVoice()" title="音声ON/OFF">
+      <span class="material-symbols-rounded" id="voice-icon">volume_up</span>
+    </div>
+
+    <!-- HUD -->
+    <div class="hud-tag hud-tag-ai" style="display:none;">
+      <div class="hud-dot hud-dot-cyan"></div><span id="ai-status">AI ONLINE</span>
+    </div>
+
+    <!-- ネームプレート -->
+    <div id="name-plate">
+      <div class="name-main">ア ル エ</div>
+      <div class="name-sub" id="name-sub">日常</div>
+    </div>
+
+    <!-- スタンプパネル -->
+    <div id="stamp-panel">
+      <div class="stamp-header">
+        <div class="sit-bar"></div>
+        <div class="stamp-title">STAMP</div>
+        <span class="material-symbols-rounded stamp-close" onclick="toggleStampPanel()">close</span>
+      </div>
+      <div class="stamp-grid" id="stamp-grid">
+        <!-- JSで生成 -->
+      </div>
+    </div>
+
+  </div>
+
+  <!-- チャットエリア -->
+  <div id="chat-area">
+
+    <!-- LINE型スクロールチャットエリア -->
+    <div id="chat-scroll-area"></div>
+
+    <!-- タイピングインジケーター -->
+    <div id="typing-indicator">
+      <div class="bubble-ai">
+        <div class="bubble-ai-avatar" id="typing-emoji">😌</div>
+        <div style="padding:6px 12px;background:rgba(168,216,255,.08);border:1px solid rgba(168,216,255,.2);border-radius:4px 16px 16px 16px;">
+          <div class="t-dot" style="display:inline-block;margin:0 2px;"></div>
+          <div class="t-dot" style="display:inline-block;margin:0 2px;"></div>
+          <div class="t-dot" style="display:inline-block;margin:0 2px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="error-msg">
+      <span id="error-text"></span>
+      <span class="material-symbols-rounded" id="error-close" onclick="closeError()" style="cursor:pointer;font-size:16px;">close</span>
+    </div>
+
+    <div id="input-area">
+      <button id="stamp-btn" onclick="toggleStampPanel()" title="スタンプ">
+        <span class="material-symbols-rounded">emoji_emotions</span>
+      </button>
+      <textarea id="msg-input" rows="1" placeholder="メッセージを入力…"></textarea>
+      <button id="send-btn" onclick="sendMessage()">
+        <span class="material-symbols-rounded">send</span>
+      </button>
+    </div>
+
+    <!-- 旧互換: 非表示 -->
+    <div id="chat-list" style="display:none;"></div>
+    <div id="hologram-dialog" style="display:none;">
+      <div id="dialog-text"></div>
+      <div id="dialog-emoji" style="display:none;"></div>
+      <div id="dialog-name" style="display:none;"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- SCRIPTS -->
+<script src="live2d/sdk/live2dcubismcore.min.js"></script>
+<script src="live2d/sdk/pixi.min.js"></script>
+<script src="live2d/sdk/cubism4.min.js"></script>
+
+<script>
+'use strict';
+
+/* ══════════════════════════════
+   定数
+══════════════════════════════ */
+const API_URL    = '/api/chat';
+const MODEL_PATH = 'live2d/model/model_25.model3.json';
+
+/* 背景画像URL（シチュエーション別） - ローカル画像 */
+const BG_IMAGES = {
+  daily:     null, // 動画背景（BG_VIDEOSで管理）
+  date_park: 'img/bg/date_park.jpg',
+  date_cafe: 'img/bg/date_cafe.jpg',
+  date_eve:  'img/bg/date_eve.jpg',
+  festival:  'img/bg/festival.jpg',
+  rainy:     'img/bg/rainy.jpg',
+};
+
+// 動画背景（daily専用: 時刻で切り替え）
+const BG_VIDEOS = {
+  daily_day:   'img/bg/daily_day.mp4',   // 〜19:59
+  daily_night: 'img/bg/daily_night.mp4', // 20:00〜
+};
+function getDailyVideoSrc(){
+  const h = new Date().getHours();
+  return h >= 20 ? BG_VIDEOS.daily_night : BG_VIDEOS.daily_day;
+}
+
+const SITUATIONS = [
+  { id:'daily',      emoji:'🌸', name:'日常',        sub:'DAILY',     prompt:'あなたはフレンドリーで元気なVtuber、アルエです。' },
+  { id:'date_park',  emoji:'🌺', name:'公園デート',  sub:'DATE·PARK', prompt:'あなたは好きな人と桜の公園でデート中のアルエです。' },
+  { id:'date_cafe',  emoji:'☕', name:'カフェデート', sub:'DATE·CAFE', prompt:'あなたは好きな人とカフェでデート中のアルエです。' },
+  { id:'date_eve',   emoji:'🌅', name:'夕暮れ',      sub:'DATE·EVE',  prompt:'あなたは好きな人と夕日を見ているアルエです。' },
+  { id:'festival',   emoji:'🎆', name:'夏祭り',      sub:'FESTIVAL',  prompt:'あなたは好きな人と夏祭りに来ている浴衣姿のアルエです。' },
+  { id:'rainy',      emoji:'🌧️', name:'雨の放課後',  sub:'RAINY',     prompt:'あなたは雨の日に好きな人と相合い傘をしているアルエです。' },
+];
+
+const EXPR_MAP = {happy:'Shine',love:'Heart',shy:'Cheek',sad:'Cry',surprised:'Sweat',angry:'Anger',neutral:null};
+const EMOTION_EMOJI  = {happy:'😊',love:'😍',shy:'😳',sad:'😢',surprised:'😲',angry:'😠',neutral:'😌'};
+const ACCENT_COLORS  = {happy:'#ffd580',love:'#ff80c8',shy:'#ff9eb0',sad:'#80c8ff',surprised:'#80ffc0',angry:'#ff8080',neutral:'#a8b8ff'};
+
+/* ══════════════════════════════
+   状態
+══════════════════════════════ */
+let affection    = parseInt(localStorage.getItem('affection') || '50');
+let situation    = SITUATIONS[0];
+let isLoading    = false;
+let live2dModel  = null;
+let pixiApp      = null;
+let chatHistory  = [];
+let historyOpen  = false;
+let modelScale   = 1.0;
+let modelOffsetY = 0;
+let bgmPlaying   = false;
+let bgmNode      = null;
+let audioCtx     = null;
+let voiceEnabled = true;
+let stampPanelOpen = false;
+let currentAudio = null;
+
+/* スタンプ定義 */
+const STAMPS = [
+  { id:'shy',       label:'てれてれ',  img:'img/stamps/stamp_shy.png',       emotion:'shy',       text:'もう〜！そんなこと言わないでよっ…えへへ♪' },
+  { id:'sad',       label:'かなしい',  img:'img/stamps/stamp_sad.png',        emotion:'sad',       text:'えっ…それ聞いてなんか切なくなっちゃった…' },
+  { id:'love',      label:'らぶ',      img:'img/stamps/stamp_love.png',       emotion:'love',      text:'んふふ〜♡ こういう時間、大好きだよ！' },
+  { id:'surprised', label:'びっくり',  img:'img/stamps/stamp_surprised.png',  emotion:'surprised', text:'えっ！？ほんとに！？もっと教えて教えて！' },
+  { id:'question',  label:'はてな',    img:'img/stamps/stamp_question.png',   emotion:'neutral',   text:'ん〜？どういうこと？ちゃんと教えてくれる？' },
+  { id:'cool',      label:'ｷﾗｷﾗ',     img:'img/stamps/stamp_cool.png',       emotion:'happy',     text:'えへへ〜、見てみて！わたしいい感じじゃない？✨' },
+];
+
+/* ══════════════════════════════
+   Web Audio（BGM + SE）
+══════════════════════════════ */
+function getAudioCtx(){
+  if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+/* UIクリック音（短い「チッ」） */
+function playSE_click(){
+  try{
+    const ctx=getAudioCtx();
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type='sine'; o.frequency.setValueAtTime(1200,ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(800,ctx.currentTime+0.06);
+    g.gain.setValueAtTime(0.18,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.1);
+    o.start(ctx.currentTime); o.stop(ctx.currentTime+0.1);
+  }catch(e){}
+}
+
+/* メッセージ送信音（少し高め） */
+function playSE_send(){
+  try{
+    const ctx=getAudioCtx();
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type='sine'; o.frequency.setValueAtTime(900,ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(1400,ctx.currentTime+0.08);
+    g.gain.setValueAtTime(0.15,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.15);
+    o.start(ctx.currentTime); o.stop(ctx.currentTime+0.15);
+  }catch(e){}
+}
+
+/* 応答受信音（柔らかいチャイム） */
+function playSE_receive(){
+  try{
+    const ctx=getAudioCtx();
+    [523,659,784].forEach((f,i)=>{
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type='sine'; o.frequency.value=f;
+      const t=ctx.currentTime+i*0.1;
+      g.gain.setValueAtTime(0,t);
+      g.gain.linearRampToValueAtTime(0.1,t+0.02);
+      g.gain.exponentialRampToValueAtTime(0.001,t+0.4);
+      o.start(t); o.stop(t+0.4);
+    });
+  }catch(e){}
+}
+
+/* BGM（ループするアンビエント） */
+const BGM_FILES = {
+  daily:     'audio/bgm/daily.mp3',
+  date_park: 'audio/bgm/date_park.mp3',
+  date_cafe: 'audio/bgm/date_cafe.mp3',
+  date_eve:  'audio/bgm/date_eve.mp3',
+  festival:  'audio/bgm/festival.mp3',
+  rainy:     'audio/bgm/rainy.mp3',
+};
+let bgmAudio = null;
+
+function startBGM(situId){
+  try{
+    if(bgmAudio){ bgmAudio.pause(); bgmAudio=null; }
+    const file = BGM_FILES[situId] || BGM_FILES['daily'];
+    bgmAudio = new Audio(file);
+    bgmAudio.loop = true;
+    bgmAudio.volume = window._bgmVol || 0.35;
+    bgmAudio.play().catch(e=>console.warn('BGM play error:',e));
+    bgmPlaying=true;
+    document.getElementById('bgm-icon').textContent='music_off';
+  }catch(e){ console.warn('BGM error:',e); }
+}
+
+function stopBGM(){
+  try{
+    if(bgmAudio){ bgmAudio.pause(); bgmAudio=null; }
+    bgmPlaying=false;
+    document.getElementById('bgm-icon').textContent='music_note';
+  }catch(e){}
+}
+
+function toggleBGM(){
+  playSE_click();
+  if(bgmPlaying) stopBGM(); else startBGM(situation?situation.id:'daily');
+}
+
+/* ══════════════════════════════
+   TTS 音声合成
+══════════════════════════════ */
+function toggleVoice(){
+  voiceEnabled=!voiceEnabled;
+  const btn=document.getElementById('voice-btn');
+  const icon=document.getElementById('voice-icon');
+  if(voiceEnabled){
+    icon.textContent='volume_up';
+    btn.classList.remove('muted');
+  }else{
+    icon.textContent='volume_off';
+    btn.classList.add('muted');
+    if(currentAudio){currentAudio.pause();currentAudio=null;}
+    document.getElementById('voice-btn').classList.remove('speaking');
+  }
+  playSE_click();
+}
+
+async function speakText(text){
+  if(!voiceEnabled) return;
+  try{
+    // 現在再生中の音声を停止
+    if(currentAudio){currentAudio.pause();currentAudio=null;}
+    const vBtn=document.getElementById('voice-btn');
+    vBtn.classList.add('speaking');
+
+    const resp=await fetch('/api/tts',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:text, voice:'ja-JP-NanamiNeural'}),
+    });
+    if(!resp.ok) throw new Error('TTS failed');
+
+    const blob=await resp.blob();
+    const url=URL.createObjectURL(blob);
+    const audio=new Audio(url);
+    currentAudio=audio;
+
+    // 口パク開始
+    _startLipSync(audio);
+
+    // 再生完了をPromiseで返す（話し切ってから次の処理ができる）
+    await new Promise((resolve)=>{
+      audio.onended=()=>{
+        vBtn.classList.remove('speaking');
+        URL.revokeObjectURL(url);
+        currentAudio=null;
+        _stopLipSync();
+        resolve();
+      };
+      audio.onerror=()=>{
+        vBtn.classList.remove('speaking');
+        currentAudio=null;
+        _stopLipSync();
+        resolve(); // エラーでもresolveして次へ進む
+      };
+      audio.play().catch(e=>{
+        console.warn('audio play error:',e);
+        vBtn.classList.remove('speaking');
+        _stopLipSync();
+        resolve();
+      });
+    });
+  }catch(e){
+    console.warn('TTS error:',e);
+    document.getElementById('voice-btn').classList.remove('speaking');
+    _stopLipSync();
+  }
+}
+
+/* ══════════════════════════════
+   口パク（リップシンク）
+══════════════════════════════ */
+let _lipSyncTimer = null;
+let _lipSyncAudioCtx = null;
+let _lipSyncAnalyser = null;
+let _lipSyncSource = null;
+let _lipSyncAudioEl = null; // 現在接続中のAudioElement
+
+function _setMouth(val){
+  const v = Math.max(0, Math.min(1, val));
+  if(live2dModel){
+    try{ live2dModel.internalModel.coreModel.setParameterValueById('ParamMouthOpenY', v); }catch(e){}
+  }
+  if(window._fallbackSetMouth) window._fallbackSetMouth(v);
+}
+
+function _startLipSync(audioEl){
+  _stopLipSync();
+
+  const useSameEl = (_lipSyncAudioEl === audioEl);
+  _lipSyncAudioEl = audioEl;
+
+  try{
+    if(!_lipSyncAudioCtx){
+      _lipSyncAudioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    }
+    if(_lipSyncAudioCtx.state==='suspended') _lipSyncAudioCtx.resume();
+
+    _lipSyncAnalyser = _lipSyncAudioCtx.createAnalyser();
+    _lipSyncAnalyser.fftSize = 256;
+    _lipSyncAnalyser.smoothingTimeConstant = 0.5; // 適度なスムージングで滑らかな開閉に
+
+    if(!useSameEl){
+      if(_lipSyncSource){ try{ _lipSyncSource.disconnect(); }catch(e){} _lipSyncSource=null; }
+      _lipSyncSource = _lipSyncAudioCtx.createMediaElementSource(audioEl);
+    }
+    _lipSyncSource.connect(_lipSyncAnalyser);
+    _lipSyncAnalyser.connect(_lipSyncAudioCtx.destination);
+
+    const dataArray = new Uint8Array(_lipSyncAnalyser.frequencyBinCount);
+    let _mouthCur   = 0;   // 現在の口開き値
+    let _silenceCount = 0; // 無音フレーム数
+    let _phase = 0;        // 開閉サイクル用位相（ラジアン）
+    // 日本語TTS: 音節ごとに口が開閉するテンポに合わせた速度
+    const CYCLE_SPEED = 0.27; // 1フレーム(16ms)あたりの位相進み → 約0.27/(2π)*60fps ≈ 2.6Hz（半分のテンポ）
+
+    _lipSyncTimer = setInterval(()=>{
+      if(audioEl.ended || audioEl.paused){ _stopLipSync(); return; }
+
+      _lipSyncAnalyser.getByteFrequencyData(dataArray);
+
+      // 母音帯域（200〜2000Hz）の音量を取得
+      // fftSize=256 → binCount=128, bin幅≈172Hz → index1〜12≈172〜2064Hz
+      let sum = 0, peak = 0;
+      for(let i=1; i<13; i++){
+        const v = dataArray[i];
+        sum += v;
+        if(v > peak) peak = v;
+      }
+      const avg = sum / (12 * 255);
+      const pkN = peak / 255;
+
+      // 現在の音量（0〜1）
+      const volume = Math.min(1, pkN * 3.0 + avg * 1.0);
+
+      if(volume > 0.05){
+        // ─ 音がある: sinサイクルで強制開閉 ─
+        _silenceCount = 0;
+        _phase += CYCLE_SPEED;
+
+        // |sin(phase)| → 0〜1の自然な開閉カーブ
+        const cycle = Math.abs(Math.sin(_phase));
+
+        // 底上げ: 0.2〜1.0の範囲で開閉（完全に閉じず、自然な話し方に）
+        const targetOpen = (0.2 + 0.8 * cycle) * Math.min(1, volume * 2.0);
+
+        // ゆっくり追従（半分のスピードで滑らかに）
+        _mouthCur += (targetOpen - _mouthCur) * 0.35;
+
+      } else {
+        // ─ 無音: すばやく閉じる ─
+        _silenceCount++;
+        _phase = 0; // 次の発話でサイクルをリセット
+        if(_silenceCount >= 2){
+          _mouthCur = 0;
+        } else {
+          _mouthCur *= 0.2;
+        }
+      }
+
+      // 閾値以下は完全クローズ
+      const out = _mouthCur < 0.06 ? 0 : _mouthCur;
+      _setMouth(out);
+    }, 32); // 32ms≈30fps（半分の更新レートで動きをゆっくりに）
+
+  }catch(e){
+    console.warn('LipSync WebAudio error:', e);
+    _startSimpleLipSync(audioEl);
+  }
+}
+
+function _startSimpleLipSync(audioEl){
+  // WebAudio非対応時のフォールバック: 話し言葉の開閉（短い開閉を繰り返す）
+  // 日本語音節のリズム: 開→閉→開→閉 を素早く
+  const pattern = [0.85,0.0,0.75,0.0,0.9,0.0,0.0,0.6,0.0,0.8,0.0,0.0,0.7,0.0,0.5,0.0];
+  let idx = 0;
+  _lipSyncTimer = setInterval(()=>{
+    if(!audioEl || audioEl.ended || audioEl.paused){ _stopLipSync(); return; }
+    _setMouth(pattern[idx % pattern.length]);
+    idx++;
+  }, 55); // 55ms間隔（約18fps）でパキパキ開閉
+}
+
+function _stopLipSync(){
+  if(_lipSyncTimer){ clearInterval(_lipSyncTimer); _lipSyncTimer=null; }
+  try{ if(_lipSyncAnalyser){ _lipSyncAnalyser.disconnect(); _lipSyncAnalyser=null; } }catch(e){}
+  // 口を完全に閉じる（即座＋念押し4回）
+  _setMouth(0);
+  setTimeout(()=>{ _setMouth(0); }, 16);
+  setTimeout(()=>{ _setMouth(0); }, 50);
+  setTimeout(()=>{ _setMouth(0); }, 120);
+  setTimeout(()=>{ _setMouth(0); }, 250);
+}
+
+/* ══════════════════════════════
+   スタンプ機能
+══════════════════════════════ */
+(function buildStampGrid(){
+  const grid=document.getElementById('stamp-grid');
+  STAMPS.forEach(s=>{
+    const el=document.createElement('div');
+    el.className='stamp-item';
+    el.innerHTML=`<img src="${s.img}" alt="${s.label}" loading="lazy"><span class="stamp-item-label">${s.label}</span>`;
+    el.onclick=()=>sendStamp(s);
+    grid.appendChild(el);
+  });
+})();
+
+function toggleStampPanel(){
+  playSE_click();
+  stampPanelOpen=!stampPanelOpen;
+  document.getElementById('stamp-panel').classList.toggle('open',stampPanelOpen);
+}
+
+function sendStamp(stamp){
+  playSE_click();
+  // パネルを閉じる
+  stampPanelOpen=false;
+  document.getElementById('stamp-panel').classList.remove('open');
+
+  // 送信ユーザーバブル（画像）をチャットスクロールエリアに追加
+  const area=_getChatScroll();
+  if(area){
+    const d=document.createElement('div');
+    d.className='bubble-user';
+    d.innerHTML=`<div class="bubble-user-inner" style="padding:4px;background:transparent;border:none;">
+      <img src="${stamp.img}" style="width:80px;height:80px;object-fit:contain;" alt="${stamp.label}">
+    </div>`;
+    area.appendChild(d);
+    area.scrollTop=area.scrollHeight;
+  }
+
+  // キャラアニメーション
+  showStampOverlay(stamp.img);
+
+  // アルエの返答をAIで生成
+  chatHistory.push({role:'user', content:`[スタンプ: ${stamp.label}] ユーザーが「${stamp.label}」のスタンプを送ってきた`});
+
+  // ローディング表示
+  setLoading(true);
+
+  // AI呼び出し（スタンプ専用プロンプト）
+  callAIForStamp(stamp).then(response=>{
+    const res_text = response.text || stamp.text;
+    const res_emotion = response.emotion || stamp.emotion;
+    updateAffection(response.affection_delta||0);
+    chatHistory.push({role:'assistant', content:res_text});
+    showCharMessage(res_text, res_emotion);
+    speakText(res_text);
+    playSE_receive();
+  }).catch(()=>{
+    // フォールバック: 固定テキスト
+    showCharMessage(stamp.text, stamp.emotion);
+    speakText(stamp.text);
+    playSE_receive();
+  }).finally(()=>{
+    setLoading(false);
+  });
+}
+
+function showStampOverlay(imgSrc){
+  // 既存のオーバーレイを削除
+  document.querySelectorAll('.stamp-sent-overlay').forEach(el=>el.remove());
+
+  const overlay=document.createElement('div');
+  overlay.className='stamp-sent-overlay';
+  overlay.innerHTML=`<img src="${imgSrc}" class="stamp-anim-img" alt="stamp">`;
+  document.body.appendChild(overlay);
+
+  // 1.5秒後にフェードアウト
+  setTimeout(()=>{
+    const img=overlay.querySelector('.stamp-anim-img');
+    if(img){
+      img.classList.add('stamp-fade-out');
+      img.addEventListener('animationend',()=>overlay.remove(),{once:true});
+    }
+  },1500);
+}
+
+/* ══════════════════════════════
+   タップ波紋アニメーション
+══════════════════════════════ */
+function spawnRipple(x,y,container){
+  const r=document.createElement('div');
+  r.className='tap-ripple';
+  const size=60;
+  r.style.cssText=`left:${x-size/2}px;top:${y-size/2}px;width:${size}px;height:${size}px;`;
+  container.appendChild(r);
+  r.addEventListener('animationend',()=>r.remove(),{once:true});
+}
+
+/* ══════════════════════════════
+   背景切り替え
+══════════════════════════════ */
+function setBG(situId){
+  const bgImg   = document.getElementById('bg-img');
+  const bgVideo = document.getElementById('bg-video');
+  if(!bgImg || !bgVideo) return;
+
+  if(situId === 'daily'){
+    // 動画背景
+    const src = getDailyVideoSrc();
+    // 既に同じ動画なら再設定不要
+    if(bgVideo.getAttribute('data-src') !== src){
+      bgVideo.src = src;
+      bgVideo.setAttribute('data-src', src);
+      bgVideo.load();
+      bgVideo.play().catch(()=>{});
+    }
+    bgVideo.classList.add('active');
+    bgImg.style.backgroundImage = 'none';
+    bgImg.style.opacity = '0';
+  } else {
+    // 静止画背景
+    const url = BG_IMAGES[situId];
+    bgVideo.classList.remove('active');
+    bgVideo.pause();
+    if(url){
+      bgImg.style.backgroundImage = `url('${url}')`;
+      bgImg.style.opacity = '1';
+    } else {
+      bgImg.style.backgroundImage = 'none';
+      bgImg.style.opacity = '0';
+    }
+  }
+}
+
+/* ══════════════════════════════
+   SPLASH
+══════════════════════════════ */
+(function initSplash(){
+  const logs=[
+    '> SYSTEM BOOT.............. OK',
+    '> LIVE2D SDK LOADED........ OK',
+    '> AI MODULE ONLINE......... ✓',
+    '> ARUE READY............. ✓',
+  ];
+  const logEl=document.getElementById('boot-log');
+  logs.forEach((txt,i)=>{
+    const d=document.createElement('div');
+    d.className='boot-line';d.textContent=txt;
+    if(i===logs.length-1) d.classList.add('ok');
+    logEl.appendChild(d);
+    setTimeout(()=>d.classList.add('show'),350+i*300);
+  });
+  // スプラッシュ非表示 → 2.4秒後
+  setTimeout(()=>{
+    const s=document.getElementById('splash');
+    if(s){ s.classList.add('hide'); setTimeout(()=>{s.style.display='none';},1100); }
+  }, 2400);
+  // 保険: 20秒後にローディングオーバーレイ強制非表示（チャットUIはhideLoadingOverlay内で制御）
+  setTimeout(()=>{ if(!_overlayHidden) hideLoadingOverlay(); }, 20000);
+})();
+
+/* ══════════════════════════════
+   SITUATION UI
+══════════════════════════════ */
+(function buildSitGrid(){
+  const grid=document.getElementById('sit-grid');
+  SITUATIONS.forEach(s=>{
+    const el=document.createElement('div');
+    el.className='sit-item'+(s.id===situation.id?' active':'');
+    el.dataset.id=s.id;
+    el.innerHTML=`
+      <div class="sit-item-emoji">${s.emoji}</div>
+      <div class="sit-item-info">
+        <div class="sit-item-name">${s.name}</div>
+        <div class="sit-item-sub">${s.sub}</div>
+      </div>`;
+    el.onclick=()=>{ playSE_click(); selectSituation(s); };
+    grid.appendChild(el);
+  });
+})();
+
+function toggleSitPanel(){
+  playSE_click();
+  const p=document.getElementById('sit-panel');
+  const b=document.getElementById('sit-btn');
+  p.classList.toggle('open');
+  b.classList.toggle('active');
+}
+
+function selectSituation(s){
+  situation=s;
+  document.getElementById('sit-emoji').textContent=s.emoji;
+  document.getElementById('sit-name').textContent=s.name;
+  document.getElementById('name-sub').textContent=s.name;
+  document.querySelectorAll('.sit-item').forEach(el=>{
+    el.classList.toggle('active',el.dataset.id===s.id);
+  });
+  document.getElementById('sit-panel').classList.remove('open');
+  document.getElementById('sit-btn').classList.remove('active');
+  // シチュエーション切り替えローディングオーバーレイ表示
+  _showSitLoadingOverlay(s);
+}
+
+function _showSitLoadingOverlay(s){
+  // 既存のオーバーレイを削除
+  const prev = document.getElementById('sit-loading-overlay');
+  if(prev) prev.remove();
+
+  // オーバーレイ作成
+  const overlay = document.createElement('div');
+  overlay.id = 'sit-loading-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(7,11,24,0.92);transition:opacity .5s;';
+
+  // ミニキャラ画像
+  const chibi = document.createElement('img');
+  chibi.src = 'img/arue_chibi.png';
+  chibi.alt = 'アルエ';
+  chibi.style.cssText = 'width:120px;height:auto;animation:sitChibiDrop .6s cubic-bezier(.22,.61,.36,1) forwards;opacity:0;';
+  overlay.appendChild(chibi);
+
+  // シチュエーション名
+  const label = document.createElement('div');
+  label.style.cssText = 'color:#a8d8ff;font-family:monospace;letter-spacing:4px;font-size:13px;margin-top:16px;animation:sitFadeIn .5s .3s forwards;opacity:0;';
+  label.textContent = s.emoji + ' ' + s.name.toUpperCase();
+  overlay.appendChild(label);
+
+  // ローディングドット
+  const dots = document.createElement('div');
+  dots.style.cssText = 'color:rgba(168,216,255,.5);font-family:monospace;font-size:11px;letter-spacing:3px;margin-top:8px;animation:sitFadeIn .5s .5s forwards,l2d-blink 1.2s .5s infinite;opacity:0;';
+  dots.textContent = 'LOADING...';
+  overlay.appendChild(dots);
+
+  // アニメーションCSS追加（一度だけ）
+  if(!document.getElementById('sit-anim-style')){
+    const st = document.createElement('style');
+    st.id = 'sit-anim-style';
+    st.textContent = '@keyframes sitChibiDrop{0%{opacity:0;transform:translateY(-60px) scale(.8)}70%{opacity:1;transform:translateY(8px) scale(1.05)}100%{opacity:1;transform:translateY(0) scale(1)}}@keyframes sitFadeIn{to{opacity:1}}';
+    document.head.appendChild(st);
+  }
+
+  document.body.appendChild(overlay);
+
+  // 1秒後に実際の切り替え処理
+  setTimeout(()=>{
+    setBG(s.id);
+    chatHistory=[];
+    // LINEチャットエリアをクリア
+    const scrollArea=document.getElementById('chat-scroll-area');
+    if(scrollArea) scrollArea.innerHTML='';
+    // BGM切り替え
+    if(bgmPlaying) startBGM(s.id);
+    // フェードアウト
+    overlay.style.opacity='0';
+    setTimeout(()=>{
+      overlay.remove();
+      showCharMessage(getSitGreeting(s),'happy');
+    }, 500);
+  }, 900);
+}
+
+function getSitGreeting(s){
+  const map={
+    daily:'ねえねえ、今日はどんな話しようか♪ 何でも聞くよ〜！',
+    date_park:'桜がきれいだね…♪ こうして一緒に来れて、すごく嬉しいよ。',
+    date_cafe:'ここのケーキ、全部おいしそう！一緒に選んでよ♪',
+    date_eve:'夕日、すごくきれい…。ねえ、もう少しだけ一緒にいてもいい？',
+    festival:'わあ、すごい人…！ 浴衣、似合ってるって言ってくれると嬉しいな…♡',
+    rainy:'あ、雨降ってきちゃった…。よかったら一緒に傘に入る？',
+  };
+  return map[s.id]||'こんにちは♪';
+}
+
+/* ══════════════════════════════
+   好感度
+══════════════════════════════ */
+function updateAffection(delta){
+  affection=Math.min(100,Math.max(0,affection+(delta||0)));
+  localStorage.setItem('affection',affection);
+  document.getElementById('affection-fill').style.width=affection+'%';
+  document.getElementById('aff-num').textContent=affection;
+}
+
+/* ══════════════════════════════
+   Live2D 初期化
+══════════════════════════════ */
+/* ══════════════════════════════
+   ローディング画面インタラクション
+══════════════════════════════ */
+(function initLoadingScreen(){
+  // 落下キャラ画像リスト（5種類からランダム）
+  const CHIBI_IMGS = [
+    'img/loading_chars/char1.png',
+    'img/loading_chars/char2.png',
+    'img/loading_chars/char3.png',
+    'img/loading_chars/char4.png',
+    'img/loading_chars/char5.png',
+  ];
+  function randomChibiSrc(){ return CHIBI_IMGS[Math.floor(Math.random()*CHIBI_IMGS.length)]; }
+
+  const pile   = document.getElementById('chibi-pile');
+  const scoreEl = document.getElementById('loading-score-val');
+  const overlay = document.getElementById('live2d-loading');
+  if(!pile || !overlay) return;
+
+  let score = parseInt(localStorage.getItem('loadingScore')||'0');
+  let tapCount = 0;
+  // 積み上げ座標管理: X列ごとの高さ
+  const colH = {}; // key: colIndex, value: current height px
+
+  function updateScore(v){
+    score += v;
+    localStorage.setItem('loadingScore', score);
+    if(scoreEl){
+      scoreEl.textContent = score;
+      scoreEl.classList.remove('pop');
+      void scoreEl.offsetWidth; // reflow
+      scoreEl.classList.add('pop');
+    }
+  }
+  // 初期スコア反映
+  if(scoreEl) scoreEl.textContent = score;
+
+  function spawnFallingChibi(startX){
+    const el = document.createElement('div');
+    el.className = 'falling-chibi';
+    const img = document.createElement('img');
+    const chosenSrc = randomChibiSrc(); // この落下キャラの画像を固定
+    img.src = chosenSrc;
+    el.appendChild(img);
+    const w = window.innerWidth || 390;
+    const h = window.innerHeight || 844;
+    const size = 32 + Math.random() * 24;       // 32〜56px
+    const rot  = (Math.random() - 0.5) * 60;    // -30〜+30度
+    const flip = Math.random() < 0.5 ? -1 : 1;  // 左右反転
+    const xPos = startX !== undefined
+      ? Math.max(0, Math.min(w - size, startX - size/2))
+      : Math.random() * (w - size);
+    const spinDeg = (Math.random() - 0.5) * 720; // 着地までの回転量
+    const fallDur = 0.55 + Math.random() * 0.35; // 0.55〜0.9秒
+
+    el.style.cssText = `
+      left:${xPos}px; top:-${size+10}px;
+      width:${size}px; height:${size}px;
+      transform:rotate(${rot}deg) scaleX(${flip});
+    `;
+    overlay.appendChild(el);
+
+    // アニメーション: 落下
+    const startTop = -(size + 10);
+    const colKey = Math.round(xPos / 40); // 40px幅のカラム
+    const pileH = colH[colKey] || 0;
+    const landTop = h - size - pileH;
+    const dist = landTop - startTop;
+
+    let startTime = null;
+    function fall(ts){
+      if(!startTime) startTime = ts;
+      const prog = Math.min(1, (ts - startTime) / (fallDur * 1000));
+      // イージング: ease-in
+      const ease = prog * prog;
+      const curRot = rot + spinDeg * ease;
+      const curY = startTop + dist * ease;
+      el.style.transform = `translateY(${curY}px) rotate(${curRot}deg) scaleX(${flip})`;
+      el.style.opacity   = Math.min(1, prog * 3).toString();
+
+      if(prog < 1){
+        requestAnimationFrame(fall);
+      } else {
+        // 着地 → 積み上げに変換（同じ画像を引き継ぐ）
+        el.remove();
+        landChibi(xPos, size, rot, flip, pileH, chosenSrc);
+        colH[colKey] = pileH + size * 0.6; // 次のキャラが積まれる高さ
+      }
+    }
+    requestAnimationFrame(fall);
+  }
+
+  function landChibi(xPos, size, rot, flip, pileH, src){
+    const h = window.innerHeight || 844;
+    const el = document.createElement('div');
+    el.className = 'piled-chibi';
+    const img = document.createElement('img');
+    img.src = src || randomChibiSrc(); // 落下時の画像を引き継ぐ
+    el.appendChild(img);
+
+    // 少しランダムな傾きで着地（ごちゃっと積まれた感）
+    const finalRot = (Math.random() - 0.5) * 25;
+    el.style.cssText = `
+      left:${xPos}px;
+      bottom:${pileH}px;
+      width:${size}px; height:${size}px;
+      transform:rotate(${finalRot}deg) scaleX(${flip});
+      transform-origin: bottom center;
+    `;
+
+    // スカッシュアニメ
+    img.style.animation = 'none';
+    el.style.transition = 'transform .15s ease';
+    pile.appendChild(el);
+
+    // 着地スカッシュ
+    requestAnimationFrame(()=>{
+      el.style.transform = `rotate(${finalRot}deg) scaleX(${flip * 1.3}) scaleY(0.6)`;
+      setTimeout(()=>{
+        el.style.transform = `rotate(${finalRot}deg) scaleX(${flip * 0.95}) scaleY(1.05)`;
+        setTimeout(()=>{
+          el.style.transform = `rotate(${finalRot}deg) scaleX(${flip}) scaleY(1)`;
+        }, 80);
+      }, 100);
+    });
+
+    // 周辺のpiled-chibiも少し揺らす
+    const siblings = pile.querySelectorAll('.piled-chibi');
+    siblings.forEach((s, i)=>{
+      if(s !== el && i >= siblings.length - 5){
+        s.style.transition = 'transform .12s ease';
+        const cr = parseFloat(s.style.transform.match(/rotate\(([-\d.]+)deg\)/)?.[1]||'0');
+        const jitter = (Math.random()-0.5)*8;
+        s.style.transform = s.style.transform.replace(/rotate\([^)]+\)/,`rotate(${cr+jitter}deg)`);
+        setTimeout(()=>{
+          s.style.transform = s.style.transform.replace(/rotate\([^)]+\)/,`rotate(${cr}deg)`);
+        }, 200);
+      }
+    });
+
+    updateScore(10);
+    tapCount++;
+  }
+
+  // タップ/クリック: 指の位置からランダムに落下
+  overlay.addEventListener('pointerdown', (e)=>{
+    if(e.target && e.target.closest('#l2d-bar, #l2d-bar-wrap, .l2d-sub')) return;
+    const x = e.clientX;
+    // タップSE（ポップ音）
+    try{
+      const ctx = window.audioCtx || (window.audioCtx = new (window.AudioContext||window.webkitAudioContext)());
+      if(ctx.state==='suspended') ctx.resume();
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type='sine';
+      o.frequency.setValueAtTime(1000,ctx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(1500,ctx.currentTime+0.04);
+      g.gain.setValueAtTime(0.22,ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.12);
+      o.start(ctx.currentTime); o.stop(ctx.currentTime+0.12);
+    }catch(ex){}
+    // 1タップで1〜2体
+    spawnFallingChibi(x + (Math.random()-0.5)*60);
+    if(Math.random() < 0.4) spawnFallingChibi(x + (Math.random()-0.5)*80);
+  });
+
+  // 停止関数
+  window._stopChibiStack = ()=>{ /* ローディング終了時は何もしない */ };
+})();
+
+function setLoadingProgress(pct,msg){
+  const bar=document.getElementById('l2d-bar');
+  const sub=document.getElementById('l2d-status-sub');
+  if(bar) bar.style.width=pct+'%';
+  if(sub&&msg) sub.textContent=msg;
+}
+let _overlayHidden=false;
+function hideLoadingOverlay(){
+  if(_overlayHidden)return;
+  _overlayHidden=true;
+  if(window._stopChibiStack) window._stopChibiStack();
+  const ov=document.getElementById('live2d-loading');
+  if(ov){
+    ov.classList.add('hidden');
+    ov.style.pointerEvents='none';
+    setTimeout(()=>{ov.style.display='none';},900);
+  }
+  // チャットUIを表示
+  document.body.classList.remove('loading');
+
+  // BGM自動開始（ユーザーインタラクション後なのでautoplayOK）
+  setTimeout(()=>{
+    if(!bgmPlaying){
+      startBGM(situation ? situation.id : 'daily');
+    }
+  }, 500);
+
+  // OpenAIでウェルカムメッセージ生成→アルエが喋る
+  setTimeout(async ()=>{
+    try{
+      const sitName = situation ? situation.name : 'デイリー';
+      const sitPrompt = situation ? situation.prompt : '';
+      const resp = await fetch('/api/chat',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          model:'gpt-4o',
+          messages:[
+            {role:'system', content:`あなたは来鳥アルエ（きとりあるえ）という名の明るく元気な女性Vtuberです。\n${sitPrompt}\n\nユーザーがアプリを起動してモデルの読み込みが完了した瞬間に、元気よく短い挨拶をしてください。\nシチュエーションに合わせた自然な一言（1〜2文、絵文字あり）を日本語で返してください。\nJSON形式 {"text":"...","emotion":"happy"} で返すこと。`},
+            {role:'user', content:'アプリ起動完了！挨拶して！'}
+          ],
+          max_tokens:80,
+          temperature:1.0,
+        })
+      });
+      if(!resp.ok) throw new Error('chat api failed');
+      const data = await resp.json();
+      let content = data.choices?.[0]?.message?.content || '';
+      // JSONパース試行
+      let text = '', emotion = 'happy';
+      try{
+        const m = content.match(/\{[\s\S]*\}/);
+        if(m){ const j=JSON.parse(m[0]); text=j.text||''; emotion=j.emotion||'happy'; }
+        else { text = content.trim(); }
+      }catch(pe){ text = content.trim(); }
+      if(!text) text = 'こんにちは♪ 来鳥アルエだよ！今日も話しかけてね！';
+      // チャットバブルに表示＋喋る（showCharMessage内でaddAiBubbleも呼ばれるので直接呼ばない）
+      showCharMessage(text, emotion);
+    }catch(e){
+      console.warn('welcome message failed:', e);
+      // フォールバック
+      const fallback = 'こんにちは♪ 来鳥アルエだよ！今日も話しかけてね！';
+      showCharMessage(fallback, 'happy');
+    }
+  }, 800);
+}
+
+async function initLive2D(){
+  const wrap=document.getElementById('live2d-canvas-wrap');
+  const charArea=document.getElementById('character-area');
+  const W=charArea.clientWidth||window.innerWidth;
+  const H=charArea.clientHeight||window.innerHeight*0.7;
+
+  setLoadingProgress(10,'INITIALIZING RENDERER...');
+
+  pixiApp=new PIXI.Application({
+    width:W,height:H,
+    backgroundAlpha:0,
+    antialias:true,
+    autoDensity:true,
+    resolution:window.devicePixelRatio||1,
+  });
+  wrap.appendChild(pixiApp.view);
+  setLoadingProgress(25,'RENDERER READY');
+
+  new ResizeObserver(()=>{
+    const nw=charArea.clientWidth,nh=charArea.clientHeight;
+    if(nw>0&&nh>0){
+      pixiApp.renderer.resize(nw,nh);
+      if(live2dModel) placeModel(nw,nh);
+    }
+  }).observe(charArea);
+
+  try{
+    if(!window.PIXI||!PIXI.live2d) throw new Error('pixi-live2d-display not loaded');
+    setLoadingProgress(40,'LOADING MODEL DATA...');
+
+    const mp=PIXI.live2d.Live2DModel.from(MODEL_PATH,{onError:(e)=>console.error(e)});
+    let prog=40;
+    const iv=setInterval(()=>{
+      if(prog<84){prog+=2;setLoadingProgress(prog,prog<62?'LOADING TEXTURE (40MB)...':'PROCESSING MODEL...');}
+    },350);
+
+    live2dModel=await mp;
+    clearInterval(iv);
+    setLoadingProgress(94,'PLACING MODEL...');
+    pixiApp.stage.addChild(live2dModel);
+    placeModel(W,H);
+    setLoadingProgress(100,'COMPLETE!');
+    document.getElementById('ai-status').textContent='LIVE2D ✓';
+    setTimeout(()=>hideLoadingOverlay(),600);
+
+  }catch(err){
+    console.warn('Live2D failed:',err.message);
+    setLoadingProgress(100,'FALLBACK MODE');
+    setTimeout(()=>hideLoadingOverlay(),500);
+    startFallback(W,H);
+  }
+}
+
+function placeModel(W,H){
+  if(!live2dModel) return;
+  const mw=live2dModel.internalModel.originalWidth||512;
+  const mh=live2dModel.internalModel.originalHeight||512;
+
+  // ── バストアップ固定 ──
+  // anchor(0.5, 0.28): モデルの胸部付近をピボットに
+  // scale*2.0: 上半身が画面の大部分を占める大きさ
+  // X: 常に中央（タップ・ドラッグでずれない）
+  // Y: anchor=0.28なのでモデルの頭頂が画面上方に来る
+  live2dModel.anchor.set(0.5, 0.28);
+  const baseScale = Math.min(W / mw, H / mh) * 2.0 * modelScale;
+  live2dModel.scale.set(baseScale);
+  live2dModel.x = W / 2;
+  // Y: 画面の高さの40%付近に配置 → 頭が切れず胸〜腰が見える
+  live2dModel.y = H * 0.52 + modelOffsetY;
+}
+
+/* ══════════════════════════════
+   Fallback
+══════════════════════════════ */
+function startFallback(W,H){
+  const g=new PIXI.Graphics(); pixiApp.stage.addChild(g);
+  let t=0,cur={eye:1,mouth:.1,blush:0},tgt={eye:1,mouth:.1,blush:0};
+  const FM={neutral:{eye:1,mouth:.1,blush:0},happy:{eye:.8,mouth:.7,blush:.5},love:{eye:.65,mouth:.6,blush:1},shy:{eye:.85,mouth:.3,blush:.9},sad:{eye:1.1,mouth:.15,blush:0},surprised:{eye:1.4,mouth:.8,blush:.3},angry:{eye:.75,mouth:.45,blush:.35}};
+  window._fallbackSetExpr=k=>{tgt={...(FM[k]||FM.neutral)};};
+  window._fallbackSetMouth=v=>{tgt.mouth=Math.max(0.05,Math.min(1,v));};
+  pixiApp.ticker.add(()=>{
+    t+=.016;
+    ['eye','mouth','blush'].forEach(k=>{cur[k]+=(tgt[k]-cur[k])*.1;});
+    const cw=pixiApp.renderer.width,ch=pixiApp.renderer.height;
+    const cx=cw/2,cy=ch*.55+modelOffsetY,R=Math.min(cw,ch)*.28;
+    const bY=Math.sin(t*1.2)*3,blT=t%4,eyeH=blT<3.75?cur.eye:Math.max(.05,1-(blT-3.75)*20);
+    g.clear();
+    g.beginFill(0x2a0a4a);g.drawEllipse(cx,cy+bY,R*1.15,R*1.35);g.endFill();
+    g.beginFill(0xFFD8C0);g.drawEllipse(cx,cy+bY,R,R*1.05);g.endFill();
+    if(cur.blush>.1){g.beginFill(0xFF9999,cur.blush*.35);g.drawEllipse(cx-R*.42,cy+bY+R*.15,R*.2,R*.1);g.drawEllipse(cx+R*.42,cy+bY+R*.15,R*.2,R*.1);g.endFill();}
+    g.beginFill(0x1a0a3a);g.drawEllipse(cx-R*.3,cy+bY-R*.1,R*.16,R*.12*eyeH);g.endFill();
+    g.beginFill(0xFFFFFF,.5);g.drawEllipse(cx-R*.25,cy+bY-R*.14,R*.04,R*.04);g.endFill();
+    g.beginFill(0x1a0a3a);g.drawEllipse(cx+R*.3,cy+bY-R*.1,R*.16,R*.12*eyeH);g.endFill();
+    g.beginFill(0xFFFFFF,.5);g.drawEllipse(cx+R*.25,cy+bY-R*.14,R*.04,R*.04);g.endFill();
+    g.beginFill(0xFF6688);g.drawEllipse(cx,cy+bY+R*.3,R*.2,Math.max(R*.02,R*.075*cur.mouth));g.endFill();
+    g.beginFill(0x4a1a7a);
+    g.moveTo(cx-R*.75,cy+bY-R*.85);
+    g.bezierCurveTo(cx-R*.5,cy+bY-R*1.35,cx+R*.5,cy+bY-R*1.35,cx+R*.75,cy+bY-R*.85);
+    g.lineTo(cx+R*.42,cy+bY-R*.2);
+    g.bezierCurveTo(cx+R*.2,cy+bY-R*.65,cx-R*.2,cy+bY-R*.65,cx-R*.42,cy+bY-R*.2);
+    g.closePath();g.endFill();
+  });
+}
+
+/* ══════════════════════════════
+   タップ・スワイプ操作
+══════════════════════════════ */
+(function setupTapControls(){
+
+  const overlay=document.getElementById('tap-overlay');
+
+  let lastDist=0;
+  let dragStartY=null,dragStartOffset=0;
+  let tapStartX=0,tapStartY=0,tapStartTime=0;
+  let isDragging=false;
+
+  // ── タッチ ──
+  overlay.addEventListener('touchstart',e=>{
+    if(e.touches.length===2){
+      lastDist=getTouchDist(e.touches);
+      dragStartY=null; // ピンチ中はドラッグキャンセル
+      isDragging=false;
+    } else if(e.touches.length===1){
+      tapStartX=e.touches[0].clientX;
+      tapStartY=e.touches[0].clientY;
+      tapStartTime=Date.now();
+      dragStartY=e.touches[0].clientY;
+      dragStartOffset=modelOffsetY; // ドラッグ開始時のoffsetを記録
+      isDragging=false;
+    }
+  },{passive:true});
+
+  overlay.addEventListener('touchmove',e=>{
+    if(e.touches.length===2){
+      const d=getTouchDist(e.touches);
+      if(lastDist>0){
+        const ratio=d/lastDist;
+        modelScale=Math.min(Math.max(modelScale*ratio,0.3),3.0);
+        refreshModel();
+      }
+      lastDist=d;
+      isDragging=true;
+    } else if(e.touches.length===1 && dragStartY!==null){
+      const dy=e.touches[0].clientY-dragStartY;
+      if(Math.abs(dy)>8) isDragging=true; // 8px以上で初めてドラッグと判定
+      if(isDragging){
+        // dragStartOffsetからの相対移動のみ適用（毎フレームdragStartYから計算）
+        modelOffsetY=Math.min(Math.max(dragStartOffset+dy,-300),300);
+        refreshModel();
+      }
+    }
+  },{passive:true});
+
+  overlay.addEventListener('touchend',e=>{
+    if(e.changedTouches.length>0){
+      const elapsed=Date.now()-tapStartTime;
+      const dx=e.changedTouches[0].clientX-tapStartX;
+      const dy=e.changedTouches[0].clientY-tapStartY;
+      const dist=Math.sqrt(dx*dx+dy*dy);
+      // タップ判定：移動量10px以内 && 300ms以内 && ドラッグ未実行
+      if(!isDragging && dist<10 && elapsed<300){
+        const rect=overlay.getBoundingClientRect();
+        spawnRipple(e.changedTouches[0].clientX-rect.left,
+                    e.changedTouches[0].clientY-rect.top,
+                    overlay);
+        playSE_click();
+      }
+    }
+    lastDist=0; dragStartY=null; isDragging=false;
+  },{passive:true});
+
+  // ── マウス ──
+  let mouseDown=false;
+  overlay.addEventListener('mousedown',e=>{
+    tapStartX=e.clientX; tapStartY=e.clientY;
+    tapStartTime=Date.now();
+    dragStartY=e.clientY; dragStartOffset=modelOffsetY;
+    isDragging=false;
+    mouseDown=true;
+    document.body.classList.add('dragging-model');
+  });
+  document.addEventListener('mousemove',e=>{
+    if(!mouseDown) return;
+    const dy=e.clientY-dragStartY;
+    if(Math.abs(dy)>5) isDragging=true;
+    if(isDragging){
+      modelOffsetY=Math.min(Math.max(dragStartOffset+dy,-300),300);
+      refreshModel();
+    }
+  });
+  document.addEventListener('mouseup',e=>{
+    if(mouseDown){
+      const elapsed=Date.now()-tapStartTime;
+      const dx=e.clientX-tapStartX,dy=e.clientY-tapStartY;
+      if(!isDragging && Math.sqrt(dx*dx+dy*dy)<10 && elapsed<200){
+        const rect=overlay.getBoundingClientRect();
+        spawnRipple(e.clientX-rect.left,e.clientY-rect.top,overlay);
+        playSE_click();
+      }
+    }
+    dragStartY=null;isDragging=false;mouseDown=false;
+    document.body.classList.remove('dragging-model');
+  });
+
+  // ホイールズーム
+  overlay.addEventListener('wheel',e=>{
+    e.preventDefault();
+    modelScale=Math.min(Math.max(modelScale-(e.deltaY>0?0.05:-0.05),0.3),3.0);
+    refreshModel();
+  },{passive:false});
+})();
+
+function getTouchDist(touches){
+  const dx=touches[0].clientX-touches[1].clientX;
+  const dy=touches[0].clientY-touches[1].clientY;
+  return Math.sqrt(dx*dx+dy*dy);
+}
+
+/* ══════════════════════════════
+   表情・モーション
+══════════════════════════════ */
+function setExpression(key){
+  if(live2dModel){
+    try{
+      const name=EXPR_MAP[key];
+      if(name) live2dModel.expression(name);
+      else      live2dModel.expression();
+    }catch(e){console.warn(e);}
+  }else if(window._fallbackSetExpr){
+    window._fallbackSetExpr(key);
+  }
+}
+function playMotion(){
+  if(!live2dModel) return;
+  try{live2dModel.motion('',0,PIXI.live2d.MotionPriority.NORMAL);}catch(e){}
+}
+
+/* ══════════════════════════════
+   チャット UI
+══════════════════════════════ */
+/* 現在AIバブルの参照（後でborder-colorを変えるため） */
+let _lastAiBubble = null;
+
+function _getChatScroll(){
+  return document.getElementById('chat-scroll-area');
+}
+
+function showCharMessage(text,emotion,skipTTS){
+  emotion=emotion||'neutral';
+  // タイピング停止
+  document.getElementById('typing-indicator').classList.remove('show');
+  // 旧UIも更新（非表示だが内部変数として保持）
+  document.getElementById('dialog-text').textContent=text;
+  document.getElementById('dialog-emoji').textContent=EMOTION_EMOJI[emotion]||'😌';
+  const color=ACCENT_COLORS[emotion]||'#a8b8ff';
+  document.getElementById('dialog-name').style.color=color;
+  // タイピング絵文字も更新
+  const te=document.getElementById('typing-emoji');
+  if(te) te.textContent=EMOTION_EMOJI[emotion]||'😌';
+  setExpression(emotion);
+  playMotion();
+  // AIバブルを追加
+  addAiBubble(text, emotion, color);
+  // TTS読み上げ（skipTTSフラグがない場合）
+  if(!skipTTS && text) speakText(text);
+}
+
+function addUserBubble(text){
+  const area=_getChatScroll();
+  if(!area) return;
+  const d=document.createElement('div');
+  d.className='bubble-user';
+  d.innerHTML=`<div class="bubble-user-inner">${escHtml(text)}</div>`;
+  area.appendChild(d);
+  area.scrollTop=area.scrollHeight;
+  // 旧互換list
+  const list=document.getElementById('chat-list');
+  if(list){const ld=document.createElement('div');ld.className='bubble-user';ld.innerHTML=d.innerHTML;list.appendChild(ld);}
+}
+
+function addAiBubble(text, emotion, color){
+  const area=_getChatScroll();
+  if(!area) return;
+  emotion=emotion||'neutral';
+  color=color||(ACCENT_COLORS&&ACCENT_COLORS[emotion])||'#a8d8ff';
+  const emoji=EMOTION_EMOJI&&EMOTION_EMOJI[emotion]?EMOTION_EMOJI[emotion]:'😌';
+  const d=document.createElement('div');
+  d.className='bubble-ai';
+  d.innerHTML=`<div class="bubble-ai-avatar">${emoji}</div><div class="bubble-ai-inner" style="border-color:${color}33;">${escHtml(text)}</div>`;
+  area.appendChild(d);
+  area.scrollTop=area.scrollHeight;
+  _lastAiBubble=d.querySelector('.bubble-ai-inner');
+}
+
+function toggleHistory(){
+  // LINEモードでは不要だが互換性のために残す
+}
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function setLoading(v){
+  isLoading=v;
+  const ti=document.getElementById('typing-indicator');
+  if(ti){
+    if(v) ti.classList.add('show'); else ti.classList.remove('show');
+    if(v) ti.scrollIntoView&&ti.scrollIntoView({behavior:'smooth',block:'end'});
+  }
+  // スクロールエリアも一番下に
+  const area=_getChatScroll();
+  if(area && v) setTimeout(()=>{area.scrollTop=area.scrollHeight;},50);
+  document.getElementById('send-btn').disabled=v;
+}
+function showError(msg){document.getElementById('error-text').textContent=msg;document.getElementById('error-msg').classList.add('show');}
+function closeError(){document.getElementById('error-msg').classList.remove('show');}
+
+/* ══════════════════════════════
+   メッセージ送信
+══════════════════════════════ */
+async function sendMessage(){
+  const input=document.getElementById('msg-input');
+  const text=input.value.trim();
+  if(!text||isLoading) return;
+  input.value='';input.style.height='auto';
+  closeError();
+  playSE_send();
+  addUserBubble(text);
+  chatHistory.push({role:'user',content:text});
+  // 履歴が長くなりすぎないよう制限
+  if(chatHistory.length>20) chatHistory=chatHistory.slice(-20);
+  setLoading(true);
+
+  try{
+    let response=null;
+    try{
+      response=await callAI(text);
+    }catch(e){
+      console.warn('API failed, using offline fallback:',e.message);
+      response=generateOfflineResponse(text);
+    }
+    // responseが配列の場合も対処
+    if(Array.isArray(response)) response=response[Math.floor(Math.random()*response.length)];
+    if(!response||typeof response!=='object') response={text:'えへへ、うまく聞こえなかったかも。もう一回言って♪',emotion:'neutral',affection_delta:0};
+
+    const res_text    = response.text  || 'えへへ…ちょっと難しかったかも。もう一度話しかけて？';
+    const res_text2   = response.text2 || null; // 分割2つ目（あれば）
+    const res_emotion = response.emotion || 'neutral';
+    updateAffection(response.affection_delta||0);
+
+    if(res_text2){
+      // ── 2メッセージ分割パターン ──
+      chatHistory.push({role:'assistant', content: res_text + ' ' + res_text2});
+
+      // 1つ目: バブル表示 + TTS再生（話し切るまでawait）
+      showCharMessage(res_text, res_emotion, true); // skipTTS=true（自前でTTS制御）
+      playSE_receive();
+      await speakText(res_text); // ← 話し終わるまで待つ
+
+      // 話し終わったらタイピング演出（0.3〜0.6秒）
+      const ti = document.getElementById('typing-indicator');
+      if(ti){ ti.classList.add('show'); }
+      await new Promise(r => setTimeout(r, 300 + Math.random()*300));
+      if(ti){ ti.classList.remove('show'); }
+
+      // 2つ目: バブル表示 + TTS
+      showCharMessage(res_text2, res_emotion, false);
+      playSE_receive();
+    } else {
+      // ── 通常1メッセージ ──
+      chatHistory.push({role:'assistant', content: res_text});
+      showCharMessage(res_text, res_emotion);
+      playSE_receive();
+    }
+  }catch(e){
+    console.error('sendMessage error:',e);
+    // エラーが起きても必ずフォールバック表示
+    const fb=generateOfflineResponse(text);
+    const fbObj=Array.isArray(fb)?fb[0]:fb;
+    showCharMessage(fbObj.text||'ごめんね、うまく聞こえなかったかも？',fbObj.emotion||'neutral');
+  }finally{
+    // 必ずloading解除
+    setLoading(false);
+  }
+}
+
+/* ══════════════════════════════
+   スタンプ用AI生成
+══════════════════════════════ */
+// スタンプ連投時の「前回の返答」を記録
+let _lastStampReply = '';
+let _stampCount = {}; // スタンプIDごとの連投カウント
+
+async function callAIForStamp(stamp){
+  const affLv = affection>=85?'最高（積極的に甘える）':affection>=70?'高（甘え表現あり）':affection>=40?'普通（フレンドリー）':'低（少し控えめ）';
+  const situation = currentSit ? currentSit.name : '日常';
+
+  // 連投カウント更新
+  _stampCount[stamp.id] = (_stampCount[stamp.id]||0) + 1;
+  const count = _stampCount[stamp.id];
+  const countNote = count >= 2
+    ? `同じスタンプを${count}回連続で送ってきた。前回と完全に違う反応・表現・言い回しをすること。`
+    : '';
+
+  // 直前の返答を参照して同じにならないよう指示
+  const prevNote = _lastStampReply
+    ? `前回の返答「${_lastStampReply.slice(0,20)}…」と同じ内容は絶対NG。全く異なる表現を使うこと。`
+    : '';
+
+  // ランダム性を高めるためのシード要素
+  const seed = `${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
+  // 直近の会話履歴も渡してコンテキストを持たせる
+  const recentHistory = chatHistory.slice(-4);
+
+  const systemPrompt = `あなたはVtuberの来鳥アルエです。ユーザーが「${stamp.label}」スタンプを送ってきました。
+シチュエーション: ${situation} / 好感度: ${affLv}
+${countNote}
+${prevNote}
+
+【絶対ルール】
+- 1〜2文で短く、毎回まったく違う言葉・表現を使う
+- 同じフレーズや言い回しを繰り返さない
+- スタンプの感情「${stamp.emotion}」に合った自然な反応
+- かわいく感情豊かに、でもワンパターンにならないよう創造的に
+- seed: ${seed}
+
+JSON形式のみで返答:
+{"text":"返答文","emotion":"${stamp.emotion}","affection_delta":数値(-2〜5)}`;
+
+  const messages = [
+    { role:'system', content: systemPrompt },
+    ...recentHistory,
+    { role:'user', content:`[スタンプ: ${stamp.label}]` }
+  ];
+
+  const body = JSON.stringify({
+    model: 'gpt-4o',
+    messages,
+    max_tokens: 120,
+    temperature: 1.1,  // より多様な出力
+    presence_penalty: 0.8,  // 繰り返しペナルティ
+    frequency_penalty: 0.8, // 頻出表現を抑制
+  });
+
+  const res = await fetch(API_URL, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body
+  });
+  if(!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  const raw = data.choices[0].message.content.trim();
+  const m = raw.match(/\{[\s\S]*?\}/);
+  if(!m) throw new Error('JSON not found');
+  const result = JSON.parse(m[0]);
+  // 返答を記録
+  _lastStampReply = result.text || '';
+  return result;
+}
+
+/* ══════════════════════════════
+   OpenAI API
+══════════════════════════════ */
+async function callAI(userText){
+  const affLv = affection>=85?'最高（積極的に甘える）':affection>=70?'高（甘え表現あり）':affection>=40?'普通（フレンドリー）':'低（少し控えめ）';
+  const recentHistory = chatHistory.slice(-6).map(m=>
+    (m.role==='user'?'ユーザー':'アルエ')+': '+m.content
+  ).join('\n');
+  const systemPrompt=`あなたはVtuberの「来鳥アルエ」です。以下のキャラクター設定を完全に守り、自然でリアルな会話をしてください。
+
+【キャラクター詳細】
+- 19歳の元気で明るいVtuber女の子
+- 少し天然で、時々照れ屋。純粋で正直な性格
+- 語尾：「〜だよ」「〜だね」「〜かな」「〜よ！」「〜じゃん！」など自然な口語
+- 趣味：お菓子作り、アニメ・ゲーム、歌、お散歩
+- 口グセ：「えへへ」「わ〜！」「もう〜！」「えっ！？」
+- 現在のシチュエーション：${situation.name}（${situation.prompt}）
+- 好感度：${affection}/100（${affLv}）
+
+【厳守ルール】
+1. 毎回必ず違う内容・表現で返す（同じパターン絶対禁止）
+2. 相手の発言の具体的なワードに反応する
+3. 自然な会話の流れで必ず質問や話題を続ける
+4. シチュエーションに合った言葉遣いにする
+
+【好感度別トーン】
+- 0-39：少し緊張気味、「…えっと」「あの、」
+- 40-69：明るくフレンドリー、笑顔の絵文字あり
+- 70-84：甘え混じり「ねえ〜」「〜♪」「もっと話したい」
+- 85-100：積極的な親密表現「好きだよ♡」「ずっと一緒にいたいな」
+
+【直近の会話履歴（参考）】
+${recentHistory||'（まだ会話なし）'}
+
+【返答形式 - 重要】
+必ずJSONのみ（前後に余計な文字・マークダウン禁止）。
+約30%の確率で返答を2つに分割して送る（LINEのように「おはよ！」「今何してたの？あそぼーよ」と自然に分ける）。
+- 1つで返す場合: {"text":"セリフ","emotion":"happy|love|shy|sad|surprised|angry|neutral","affection_delta":数値}
+- 2つに分ける場合: {"text":"1つ目のセリフ","text2":"2つ目のセリフ","emotion":"感情","affection_delta":数値}
+text2がある場合は必ずtext2も含めること。text2は短め（1文）で自然な続き。`;
+
+  const resp=await fetch(API_URL,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'gpt-4o',
+      messages:[{role:'system',content:systemPrompt},...chatHistory.slice(-8)],
+      max_tokens:500,
+      temperature:1.0,
+      response_format:{type:'json_object'},
+    }),
+  });
+  if(!resp.ok){
+    const err=await resp.json().catch(()=>({}));
+    throw new Error(err.error?.message||`HTTP ${resp.status}`);
+  }
+  const data=await resp.json();
+  const content=data.choices?.[0]?.message?.content||'{}';
+  try{return JSON.parse(content);}
+  catch{return {text:content,emotion:'neutral',affection_delta:0};}
+}
+
+/* ══════════════════════════════
+   オフラインフォールバック
+══════════════════════════════ */
+function generateOfflineResponse(text){
+  const t=text.toLowerCase();
+  const hi=affection>75,mid=affection>45;
+  if(/好き|すき|大好き|love|愛/.test(t)){
+    const r=hi?[
+      {text:'わ、わたしも…ずっとそう思ってた…♡ こんなにドキドキするの、初めてかも。',emotion:'love',affection_delta:9},
+      {text:'えっ…もう！そんなこと言われたら心臓止まっちゃうよ…っ♡',emotion:'shy',affection_delta:8},
+    ]:[
+      {text:'そ、そんなこと急に言わないでよっ…！え、えへへ、ちょっと嬉しいかも…。',emotion:'shy',affection_delta:7},
+      {text:'もう、びっくりするじゃない！…でも、ちょっとだけ嬉しかった。',emotion:'happy',affection_delta:6},
+    ];
+    return r[Math.floor(Math.random()*r.length)];
+  }
+  if(/かわいい|可愛|cute/.test(t)){
+    const r=[
+      {text:'えへへ、そう言ってもらえると恥ずかしいな〜♪ ありがとう！',emotion:'shy',affection_delta:6},
+      {text:'もう〜！そういうこと言うの、ずるいよ！…でもありがとね♡',emotion:'shy',affection_delta:5},
+      {text:'やった〜！アルエ今日もかわいいって思ってたんだよね♪ えへへ。',emotion:'happy',affection_delta:5},
+    ];
+    return r[Math.floor(Math.random()*r.length)];
+  }
+  if(/ありがとう|ありがと|thank/.test(t)){
+    return [{text:'えへへ、どういたしまして♪ そう言ってもらえると嬉しいな！',emotion:'happy',affection_delta:4},
+            {text:'もう、そんなに感謝されたらこっちが照れちゃうじゃん！',emotion:'happy',affection_delta:4}][Math.floor(Math.random()*2)];
+  }
+  if(/元気|げんき|調子/.test(t)){
+    const r=hi?[
+      {text:`うん！めちゃくちゃ元気だよ〜！${situation.emoji} …あなたがいるから、かな♪`,emotion:'happy',affection_delta:4},
+      {text:'元気元気〜！って言うか、今日一緒に話せて嬉しくて元気出てきた！',emotion:'happy',affection_delta:3},
+    ]:[
+      {text:`うん、元気だよ！${situation.emoji} 今日もよろしくね〜♪`,emotion:'happy',affection_delta:3},
+      {text:'元気だよ〜！なんかいいことあった？アルエも聞きたい！',emotion:'happy',affection_delta:2},
+    ];
+    return r[Math.floor(Math.random()*r.length)];
+  }
+  if(/悲し|つら|さみし|sad|辛/.test(t)){
+    const r=[
+      {text:'えっ、どうしたの…？何があったか話してくれる？アルエ、ちゃんと聞くよ。',emotion:'sad',affection_delta:3},
+      {text:'そっか…それは辛かったね。大丈夫？…そばにいるから。',emotion:'sad',affection_delta:3},
+      {text:'アルエもなんか悲しくなってきた…。ねえ、一緒にいてもいい？',emotion:'sad',affection_delta:4},
+    ];
+    return r[Math.floor(Math.random()*r.length)];
+  }
+  if(/怒|むか|腹立|イライラ|ムカ/.test(t)){
+    return [{text:'わ、それは腹立つね…！アルエも一緒に怒ってあげるから、話して？',emotion:'angry',affection_delta:2},
+            {text:'えー、ひどいよそれ…！深呼吸して？アルエここにいるよ。',emotion:'surprised',affection_delta:1}][Math.floor(Math.random()*2)];
+  }
+  if(/おやすみ|寝る|眠い|ねむ/.test(t)){
+    const r=hi?[
+      {text:'おやすみ〜♡ …また明日も話しかけてね。夢に出てきちゃうかも♪',emotion:'love',affection_delta:3},
+      {text:'もうそんな時間か〜！おやすみなさい♪ いい夢みてね。',emotion:'happy',affection_delta:2},
+    ]:[
+      {text:'おやすみ〜！ゆっくり休んでね♪ また明日も話しかけてね！',emotion:'happy',affection_delta:2},
+    ];
+    return r[Math.floor(Math.random()*r.length)];
+  }
+  if(/名前|なまえ|だれ|誰/.test(t)){
+    return {text:'アルエだよ！来鳥アルエって書いてアルエ♪ よろしくね〜！',emotion:'happy',affection_delta:2};
+  }
+  if(/アニメ|ゲーム|漫画|映画|音楽/.test(t)){
+    const r=[
+      {text:'わかる〜！アルエもそれ好きだよ！もっと教えて教えて♪',emotion:'happy',affection_delta:4},
+      {text:'えっ、それ知ってる！アルエも最近ハマってるんだよね〜！趣味合うね♪',emotion:'happy',affection_delta:4},
+      {text:'アルエも最近それにハマってる〜！一緒に語れるね♪',emotion:'happy',affection_delta:3},
+    ];
+    return r[Math.floor(Math.random()*r.length)];
+  }
+  if(/食べ|ごはん|飯|おいし|うまい|料理/.test(t)){
+    const r=[
+      {text:'いいな〜！アルエもお腹空いてきた笑 何食べたの？',emotion:'happy',affection_delta:3},
+      {text:'食べること大好き〜！最近チーズたっぷりのパスタにハマってるんだ♪',emotion:'happy',affection_delta:2},
+    ];
+    return r[Math.floor(Math.random()*r.length)];
+  }
+
+  // シチュエーション＋好感度別デフォルト
+  const situPool={
+    daily:[
+      {text:'えへへ、そっかそっか〜♪ もっといろいろ話そうよ！',emotion:'happy',affection_delta:2},
+      {text:'なるほどね〜！アルエも気になってたんだよね、それ。',emotion:'happy',affection_delta:2},
+      {text:'あ、それってどういうこと？もっと詳しく教えて！',emotion:'surprised',affection_delta:2},
+    ],
+    date_park:[
+      {text:'桜の花びらが風に舞って、なんかすごくきれいだね…♪ こういう時間、大切にしたいな。',emotion:'happy',affection_delta:3},
+      {text:'公園の散歩って気持ちいいよね〜！ずっとこうしていたいな♪',emotion:'happy',affection_delta:3},
+    ],
+    date_cafe:[
+      {text:'このカフェ、雰囲気最高だよね〜♪ またここ来たいな！',emotion:'happy',affection_delta:3},
+      {text:'ケーキ食べながらこうして話してると幸せ〜！',emotion:'happy',affection_delta:3},
+    ],
+    date_eve:[
+      {text:'夕日がどんどんきれいになってく…。ねえ、このままずっとここにいよ？',emotion:'shy',affection_delta:3},
+      {text:'こういう夕暮れ時って、なんか切なくなるよね。…でも一緒だから大丈夫♪',emotion:'love',affection_delta:4},
+    ],
+    festival:[
+      {text:'お祭りの雰囲気って楽しいよね〜♪ 何食べようか全部気になっちゃう！',emotion:'happy',affection_delta:3},
+      {text:'浴衣って歩きにくいけど、こういう日だけのお楽しみだよね♪',emotion:'happy',affection_delta:2},
+    ],
+    rainy:[
+      {text:'雨音って落ち着くよね〜。こうして一緒にいると、なんか安心する。',emotion:'shy',affection_delta:3},
+      {text:'雨の日もこうして話せるから嫌いじゃないかな…♪',emotion:'neutral',affection_delta:2},
+    ],
+  };
+  const base=(situPool[situation.id]||situPool.daily);
+  const extra=hi?[
+    {text:`${situation.emoji} こうしてあなたと話してると、すごく安心するんだよね…♡`,emotion:'love',affection_delta:4},
+    {text:'ねえ、もっとそばにいていい…？アルエ、あなたのこと好きだよ♡',emotion:'love',affection_delta:5},
+  ]:mid?[
+    {text:'うん、そうだよね〜！アルエも同じこと思ってた♪',emotion:'happy',affection_delta:2},
+    {text:'えへへ〜！なんか楽しいな、こうして話してると♪',emotion:'happy',affection_delta:2},
+  ]:[
+    {text:'そっかあ〜、なるほどね！アルエも考えてみよっと。',emotion:'neutral',affection_delta:1},
+    {text:'うん、それって面白いね！もっと教えてくれる？',emotion:'happy',affection_delta:1},
+  ];
+  const pool=[...base,...extra];
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
+/* ══════════════════════════════
+   入力ボックス
+══════════════════════════════ */
+const msgInput=document.getElementById('msg-input');
+msgInput.addEventListener('input',function(){
+  this.style.height='auto';
+  this.style.height=Math.min(this.scrollHeight,80)+'px';
+});
+msgInput.addEventListener('keydown',function(e){
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}
+});
+
+/* ══════════════════════════════
+   初期化
+══════════════════════════════ */
+window.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('affection-fill').style.width=affection+'%';
+  document.getElementById('aff-num').textContent=affection;
+  setBG('daily');
+
+  // ── 設定復元（localStorage → index.html UI同期）──
+  try{
+    // BGM ON/OFF
+    const _bgmSaved = localStorage.getItem('bgm_enabled');
+    if(_bgmSaved === 'false'){
+      bgmPlaying = false;
+      const _bi = document.getElementById('bgm-icon');
+      if(_bi) _bi.textContent = 'music_note';
+    }
+    // ボイス ON/OFF
+    const _voiceSaved = localStorage.getItem('voice_enabled');
+    if(_voiceSaved === 'false'){
+      voiceEnabled = false;
+      const _vb = document.getElementById('voice-btn');
+      const _vi = document.getElementById('voice-icon');
+      if(_vb) _vb.classList.add('muted');
+      if(_vi) _vi.textContent = 'volume_off';
+    }
+    // ボリューム
+    const _bv = parseFloat(localStorage.getItem('bgm_volume') || '0.35');
+    window._bgmVol = _bv;
+    // 好感度リセット確認
+    const _affReset = localStorage.getItem('affection_reset');
+    if(_affReset === 'true'){
+      affection = 50;
+      localStorage.setItem('affection','50');
+      localStorage.removeItem('affection_reset');
+      document.getElementById('affection-fill').style.width='50%';
+      document.getElementById('aff-num').textContent='50';
+    }
+  }catch(e){}
+});
+
+// window.load後にLive2D初期化（SDK完全ロード後）
+window.addEventListener('load',function(){
+  let retries=0;
+  function tryInitLive2D(){
+    if(typeof PIXI!=='undefined'&&PIXI.live2d){
+      setTimeout(()=>{
+        initLive2D().catch(e=>{
+          console.warn('initLive2D error:',e);
+          if(!_overlayHidden) hideLoadingOverlay();
+        });
+      },200);
+    } else if(retries<20){
+      retries++;
+      setTimeout(tryInitLive2D,300);
+    } else {
+      console.warn('PIXI not available, hiding overlay');
+      if(!_overlayHidden) hideLoadingOverlay();
+    }
+  }
+  tryInitLive2D();
+});
+</script>
+</body>
+</html>

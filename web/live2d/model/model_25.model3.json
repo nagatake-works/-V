@@ -1,0 +1,88 @@
+{
+	"Version": 3,
+	"FileReferences": {
+		"Moc": "model_25.moc3",
+		"Textures": [
+			"textures/texture_00.png"
+		],
+		"Physics": "model_25.physics3.json",
+		"DisplayInfo": "model_25.cdi3.json",
+		"Expressions": [
+			{
+				"Name": "Anger",
+				"File": "expressions/Anger.exp3.json"
+			},
+			{
+				"Name": "Cheek",
+				"File": "expressions/Cheek.exp3.json"
+			},
+			{
+				"Name": "Cheek2",
+				"File": "expressions/Cheek2.exp3.json"
+			},
+			{
+				"Name": "Cry",
+				"File": "expressions/Cry.exp3.json"
+			},
+			{
+				"Name": "Guruguru",
+				"File": "expressions/Guruguru.exp3.json"
+			},
+			{
+				"Name": "Gyu",
+				"File": "expressions/Gyu.exp3.json"
+			},
+			{
+				"Name": "Heart",
+				"File": "expressions/Heart.exp3.json"
+			},
+			{
+				"Name": "NoHighlight",
+				"File": "expressions/NoHighlight.exp3.json"
+			},
+			{
+				"Name": "Pale",
+				"File": "expressions/Pale.exp3.json"
+			},
+			{
+				"Name": "Shine",
+				"File": "expressions/Shine.exp3.json"
+			},
+			{
+				"Name": "Sweat",
+				"File": "expressions/Sweat.exp3.json"
+			},
+			{
+				"Name": "Trouble",
+				"File": "expressions/Trouble.exp3.json"
+			},
+			{
+				"Name": "NoCoat",
+				"File": "expressions/NoCoat.exp3.json"
+			}
+		],
+		"Motions": {
+			"": [
+				{
+					"File": "motions/Default.motion3.json"
+				}
+			]
+		}
+	},
+	"Groups": [
+		{
+			"Target": "Parameter",
+			"Name": "LipSync",
+			"Ids": []
+		},
+		{
+			"Target": "Parameter",
+			"Name": "EyeBlink",
+			"Ids": [
+				"ParamEyeLOpen",
+				"ParamEyeROpen"
+			]
+		}
+	],
+	"HitAreas": []
+}
