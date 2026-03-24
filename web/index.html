@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>来鳥アルエ - Vtuber Chat</title>
+<title>ことりアルエ - 君とV</title>
 <!-- Material Symbols (Google) -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 <style>
@@ -31,52 +31,191 @@ html,body{
 /* ══════════════════════════════════════════════════
    SPLASH
 ══════════════════════════════════════════════════ */
+/* ══ SPLASH リニューアル ══ */
 #splash{
-  position:fixed;inset:0;z-index:9999;
-  background:#070b18;
+  position:fixed;inset:0;z-index:99999;
   display:flex;flex-direction:column;
-  align-items:center;justify-content:center;
-  transition:opacity 1s ease;
+  align-items:center;justify-content:flex-end;
+  overflow:hidden;
+  transition:opacity 1.2s ease;
 }
 #splash.hide{opacity:0;pointer-events:none;}
-/* KimitV スプラッシュロゴ */
-.splash-logo-wrap{
-  display:flex;align-items:center;justify-content:center;
-  margin-bottom:4px;
+
+/* 背景グラデーション */
+#splash-bg-grad{
+  position:absolute;inset:0;
+  background: linear-gradient(160deg,
+    #ffd6f0 0%,
+    #e8b4f8 18%,
+    #c9a8f5 35%,
+    #a8c8ff 60%,
+    #b8e8ff 80%,
+    #d4f0ff 100%
+  );
+  z-index:0;
 }
-.splash-logo-img{
-  width:260px;max-width:80vw;
-  filter:drop-shadow(0 0 30px rgba(200,160,255,.6)) drop-shadow(0 0 60px rgba(168,216,255,.3));
-  animation:logoFloat 3s ease-in-out infinite;
+
+/* キャラ画像（白背景なので全画面に敷く） */
+#splash-chara{
+  position:absolute;
+  bottom:0;left:0;right:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:center bottom;
+  z-index:2;
+  animation:charaFadeIn 1.0s ease forwards;
+  opacity:0;
 }
-@keyframes logoFloat{
-  0%,100%{transform:translateY(0);}
-  50%{transform:translateY(-8px);}
+@keyframes charaFadeIn{
+  0%{opacity:0;transform:translateY(20px);}
+  100%{opacity:1;transform:translateY(0);}
 }
+
+/* キラキラ星パーティクル */
+#splash-particles{
+  position:absolute;inset:0;z-index:3;pointer-events:none;
+}
+/* タップ時キラキラエフェクト */
+/* ── 全画面タップキラキラエフェクト（グローバル） ── */
+#global-tap-fx{
+  position:fixed;inset:0;z-index:999999;pointer-events:none;overflow:hidden;
+}
+.tap-burst{
+  position:absolute;
+  pointer-events:none;
+  transform:translate(-50%,-50%);
+}
+.tap-burst .tb-star{
+  position:absolute;
+  top:50%;left:50%;
+  width:0;height:0;
+  transform-origin:center center;
+  animation:tbFly var(--dur,0.6s) var(--delay,0s) ease-out forwards;
+  opacity:0;
+}
+.tap-burst .tb-star::before{
+  content:'';
+  display:block;
+  width:var(--sz,6px);height:var(--sz,6px);
+  background:var(--col,#fff);
+  clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);
+  border-radius:1px;
+  box-shadow:0 0 4px var(--col,#fff);
+}
+@keyframes tbFly{
+  0%  {opacity:1; transform:translate(-50%,-50%) translate(0,0) scale(0.2) rotate(0deg);}
+  60% {opacity:1; transform:translate(-50%,-50%) translate(var(--tx),var(--ty)) scale(1) rotate(var(--rot));}
+  100%{opacity:0; transform:translate(-50%,-50%) translate(calc(var(--tx)*1.3),calc(var(--ty)*1.3)) scale(0.4) rotate(calc(var(--rot)*2));}
+}
+/* ハート */
+.tap-burst .tb-heart{
+  position:absolute;
+  top:50%;left:50%;
+  font-size:var(--sz,11px);
+  line-height:1;
+  animation:tbFly var(--dur,0.75s) var(--delay,0s) ease-out forwards;
+  opacity:0;
+  transform:translate(-50%,-50%);
+  filter:drop-shadow(0 0 3px var(--col,#ffaacc));
+}
+/* 旧スプラッシュ専用レイヤー（互換のため残す） */
+#splash-tap-fx{ display:none; }
+.sp-star{
+  position:absolute;
+  width:6px;height:6px;
+  background:white;
+  clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);
+  animation:starTwinkle var(--dur,2s) ease-in-out var(--delay,0s) infinite;
+  opacity:0;
+}
+@keyframes starTwinkle{
+  0%,100%{opacity:0;transform:scale(0.5) rotate(0deg);}
+  30%,70%{opacity:1;transform:scale(1) rotate(20deg);}
+  50%{opacity:0.8;transform:scale(1.2) rotate(40deg);}
+}
+/* 大きめの光の玉 */
+.sp-orb{
+  position:absolute;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(255,255,255,0.9),rgba(255,220,255,0.3) 60%,transparent);
+  animation:orbFloat var(--dur,3s) ease-in-out var(--delay,0s) infinite;
+  opacity:0;
+}
+@keyframes orbFloat{
+  0%,100%{opacity:0;transform:translateY(0) scale(0.8);}
+  40%,60%{opacity:0.7;transform:translateY(-12px) scale(1);}
+}
+
+/* ロゴ */
+#splash-logo-wrap{
+  position:absolute;
+  bottom:130px;left:0;right:0;
+  display:flex;flex-direction:column;
+  align-items:center;gap:10px;
+  z-index:5;
+  animation:logoSlideUp 0.9s 0.5s ease both;
+  opacity:0;
+}
+@keyframes logoSlideUp{
+  0%{opacity:0;transform:translateY(30px);}
+  100%{opacity:1;transform:translateY(0);}
+}
+#splash-logo-img{
+  width:280px;max-width:75vw;
+  filter:drop-shadow(0 4px 20px rgba(180,100,255,0.5)) drop-shadow(0 0 40px rgba(140,180,255,0.4));
+}
+#splash-subtitle{
+  font-size:13px;letter-spacing:2px;
+  color:rgba(80,40,120,0.75);
+  font-family:'Hiragino Kaku Gothic Pro','Noto Sans JP',sans-serif;
+  text-align:center;line-height:1.7;
+  text-shadow:0 1px 4px rgba(255,255,255,0.8);
+}
+
+/* 下部ローディングバー */
+#splash-loading-bar-wrap{
+  position:absolute;bottom:60px;left:0;right:0;
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  z-index:5;
+  animation:fadeInUp 0.8s 1.2s ease both;
+  opacity:0;
+}
+@keyframes fadeInUp{
+  from{opacity:0;transform:translateY(10px);}
+  to{opacity:1;transform:translateY(0);}
+}
+#splash-bar-track{
+  width:200px;height:3px;
+  background:rgba(160,100,200,0.2);
+  border-radius:4px;overflow:hidden;
+}
+#splash-bar-fill{
+  height:100%;width:0%;
+  background:linear-gradient(90deg,#e090ff,#90c8ff);
+  border-radius:4px;
+  box-shadow:0 0 8px rgba(200,150,255,0.6);
+  transition:width 0.3s ease;
+}
+#splash-loading-text{
+  font-size:10px;letter-spacing:3px;
+  color:rgba(120,80,180,0.6);
+  font-family:monospace;
+}
+
 /* ヘッダーロゴ */
 .topbar-logo{
-  height:22px;
-  filter:drop-shadow(0 0 8px rgba(200,160,255,.5));
+  height:36px;
+  filter:drop-shadow(0 0 10px rgba(200,160,255,.6));
   vertical-align:middle;
+  object-fit:contain;
 }
 .splash-line{
   width:180px;height:1px;margin:18px 0;
   background:linear-gradient(90deg,transparent,rgba(168,216,255,.5),transparent);
 }
-.boot-log{
-  width:260px;
-  background:rgba(10,18,40,.6);
-  border:1px solid rgba(168,216,255,.12);
-  border-radius:6px;padding:12px;
-  backdrop-filter:blur(10px);
-}
-.boot-line{
-  font-size:10px;font-family:monospace;
-  color:rgba(168,216,255,.5);padding:2px 0;
-  opacity:0;transition:opacity .4s;
-}
-.boot-line.show{opacity:1;}
-.boot-line.ok{color:rgba(100,255,180,.8);}
+.boot-log{display:none;}
+.boot-line{display:none;}
 
 /* ══════════════════════════════════════════════════
    LAYOUT
@@ -314,18 +453,7 @@ html,body{
 }
 #live2d-canvas-wrap canvas{width:100%!important;height:100%!important;display:block;}
 
-/* タップ波紋 */
-.tap-ripple{
-  position:absolute;
-  border-radius:50%;
-  background:rgba(168,216,255,.35);
-  transform:scale(0);
-  animation:ripple-expand .6s ease-out forwards;
-  pointer-events:none;z-index:30;
-}
-@keyframes ripple-expand{
-  to{transform:scale(4);opacity:0;}
-}
+/* タップ波紋 → 削除済み */
 
 /* HUD */
 .hud-tag{
@@ -632,13 +760,42 @@ body.loading #chat-area{
 </head>
 <body class="loading">
 
-<!-- SPLASH -->
+<!-- グローバルタップキラキラエフェクトレイヤー（全画面共通） -->
+<div id="global-tap-fx"></div>
+
+<!-- SPLASH リニューアル -->
 <div id="splash">
-  <div class="splash-logo-wrap">
-    <img src="img/kimitv_logo.png" alt="KimitV" class="splash-logo-img">
+  <!-- 背景グラデーション -->
+  <div id="splash-bg-grad"></div>
+
+  <!-- キラキラパーティクル -->
+  <div id="splash-particles"></div>
+
+  <!-- タップ時キラキラエフェクト -->
+  <div id="splash-tap-fx"></div>
+
+  <!-- キャラクター画像（白背景除去済み） -->
+  <picture>
+    <source srcset="img/splash/splash_chara.webp" type="image/webp">
+    <img id="splash-chara" src="img/splash/splash_chara.png" alt="アルエ">
+  </picture>
+
+  <!-- ロゴ＋サブタイトル -->
+  <div id="splash-logo-wrap">
+    <img id="splash-logo-img" src="img/splash/splash_logo.png" alt="君とV">
+
   </div>
-  <div class="splash-line"></div>
-  <div class="boot-log" id="boot-log"></div>
+
+  <!-- ローディングバー -->
+  <div id="splash-loading-bar-wrap">
+    <div id="splash-bar-track">
+      <div id="splash-bar-fill"></div>
+    </div>
+    <div id="splash-loading-text">process...OK</div>
+  </div>
+
+  <!-- 非表示（JS互換用） -->
+  <div class="boot-log" id="boot-log" style="display:none"></div>
 </div>
 
 <!-- MAIN APP -->
@@ -1241,17 +1398,7 @@ function showStampOverlay(imgSrc){
   },1500);
 }
 
-/* ══════════════════════════════
-   タップ波紋アニメーション
-══════════════════════════════ */
-function spawnRipple(x,y,container){
-  const r=document.createElement('div');
-  r.className='tap-ripple';
-  const size=60;
-  r.style.cssText=`left:${x-size/2}px;top:${y-size/2}px;width:${size}px;height:${size}px;`;
-  container.appendChild(r);
-  r.addEventListener('animationend',()=>r.remove(),{once:true});
-}
+
 
 /* ══════════════════════════════
    背景切り替え
@@ -1293,27 +1440,103 @@ function setBG(situId){
    SPLASH
 ══════════════════════════════ */
 (function initSplash(){
-  const logs=[
-    '> SYSTEM BOOT.............. OK',
-    '> LIVE2D SDK LOADED........ OK',
-    '> AI MODULE ONLINE......... ✓',
-    '> ARUE READY............. ✓',
+  // ── キラキラパーティクルを生成 ──
+  const particles = document.getElementById('splash-particles');
+  if(particles){
+    // 小さい星を20個
+    for(let i=0;i<20;i++){
+      const star = document.createElement('div');
+      star.className = 'sp-star';
+      const size = 4 + Math.random()*8;
+      star.style.cssText = `
+        left:${Math.random()*100}%;
+        top:${Math.random()*100}%;
+        width:${size}px;height:${size}px;
+        --dur:${1.5+Math.random()*2.5}s;
+        --delay:${Math.random()*2}s;
+      `;
+      particles.appendChild(star);
+    }
+    // 光の玉を8個
+    for(let i=0;i<8;i++){
+      const orb = document.createElement('div');
+      orb.className = 'sp-orb';
+      const size = 10 + Math.random()*20;
+      orb.style.cssText = `
+        left:${Math.random()*90}%;
+        top:${Math.random()*80}%;
+        width:${size}px;height:${size}px;
+        --dur:${2+Math.random()*3}s;
+        --delay:${Math.random()*2.5}s;
+      `;
+      particles.appendChild(orb);
+    }
+  }
+
+  // ── ローディングバーアニメ ──
+  const bar = document.getElementById('splash-bar-fill');
+  const barText = document.getElementById('splash-loading-text');
+  const steps = [
+    {w:20, t:'loading...'},
+    {w:45, t:'connecting...'},
+    {w:70, t:'preparing...'},
+    {w:90, t:'almost ready...'},
+    {w:100,t:'process...OK'},
   ];
-  const logEl=document.getElementById('boot-log');
-  logs.forEach((txt,i)=>{
-    const d=document.createElement('div');
-    d.className='boot-line';d.textContent=txt;
-    if(i===logs.length-1) d.classList.add('ok');
-    logEl.appendChild(d);
-    setTimeout(()=>d.classList.add('show'),350+i*300);
+  steps.forEach((s,i)=>{
+    setTimeout(()=>{
+      if(bar) bar.style.width = s.w+'%';
+      if(barText) barText.textContent = s.t;
+    }, 300 + i*380);
   });
-  // スプラッシュ非表示 → 2.4秒後
-  setTimeout(()=>{
-    const s=document.getElementById('splash');
-    if(s){ s.classList.add('hide'); setTimeout(()=>{s.style.display='none';},1100); }
-  }, 2400);
-  // 保険: 20秒後にローディングオーバーレイ強制非表示（チャットUIはhideLoadingOverlay内で制御）
-  setTimeout(()=>{ if(!_overlayHidden) hideLoadingOverlay(); }, 20000);
+
+  // スプラッシュのバーストはグローバル関数を使用（後ほど初期化）
+  // ※ グローバルタップ処理は initGlobalTapFx() で一括管理
+
+  // ── 起動音を再生し、再生完了後にスプラッシュを非表示 ──
+  function hideSplashScreen(){
+    const s = document.getElementById('splash');
+    if(s){ s.classList.add('hide'); setTimeout(()=>{ s.style.display='none'; }, 1200); }
+  }
+
+  const startupAudio = new Audio('audio/startup.mp3');
+  startupAudio.volume = 1.0;
+
+  // 再生完了 → 次の画面へ
+  startupAudio.addEventListener('ended', ()=>{
+    hideSplashScreen();
+  }, {once: true});
+
+  // エラー時（音声読み込み失敗など）はフォールバックで2.4秒後に遷移
+  startupAudio.addEventListener('error', ()=>{
+    console.warn('起動音の読み込みに失敗しました。フォールバック遷移します。');
+    setTimeout(hideSplashScreen, 2400);
+  }, {once: true});
+
+  // 再生開始（ブラウザの自動再生ポリシー対応）
+  const playPromise = startupAudio.play();
+  if(playPromise !== undefined){
+    playPromise.catch(()=>{
+      // 自動再生がブロックされた場合：最初のタップで再生開始
+      function tryPlay(){
+        startupAudio.play().then(()=>{
+          document.removeEventListener('pointerdown', tryPlay, {capture:true});
+          document.removeEventListener('touchstart', tryPlay, {capture:true});
+        }).catch(()=>{});
+      }
+      document.addEventListener('pointerdown', tryPlay, {capture:true, once:true});
+      document.addEventListener('touchstart', tryPlay, {capture:true, once:true});
+      // 自動再生ブロック時は5秒後にフォールバック遷移
+      setTimeout(()=>{
+        if(document.getElementById('splash') && !document.getElementById('splash').classList.contains('hide')){
+          hideSplashScreen();
+        }
+      }, 5000);
+    });
+  }
+
+  // 保険: 30秒後にローディングオーバーレイ強制非表示（チャットUIはhideLoadingOverlay内で制御）
+  setTimeout(()=>{ if(!_overlayHidden) hideLoadingOverlay(); }, 30000);
 })();
 
 /* ══════════════════════════════
@@ -1648,7 +1871,7 @@ function hideLoadingOverlay(){
         body: JSON.stringify({
           model:'gpt-4o',
           messages:[
-            {role:'system', content:`あなたは来鳥アルエ（きとりあるえ）という名の明るく元気な女性Vtuberです。\n${sitPrompt}\n\nユーザーがアプリを起動してモデルの読み込みが完了した瞬間に、元気よく短い挨拶をしてください。\nシチュエーションに合わせた自然な一言（1〜2文、絵文字あり）を日本語で返してください。\nJSON形式 {"text":"...","emotion":"happy"} で返すこと。`},
+            {role:'system', content:`あなたは来鳥アルエ（ことりあるえ）という名の明るく元気な女性Vtuberです。\n${sitPrompt}\n\nユーザーがアプリを起動してモデルの読み込みが完了した瞬間に、元気よく短い挨拶をしてください。\nシチュエーションに合わせた自然な一言（1〜2文、絵文字あり）を日本語で返してください。\nJSON形式 {"text":"...","emotion":"happy"} で返すこと。`},
             {role:'user', content:'アプリ起動完了！挨拶して！'}
           ],
           max_tokens:80,
@@ -1665,13 +1888,13 @@ function hideLoadingOverlay(){
         if(m){ const j=JSON.parse(m[0]); text=j.text||''; emotion=j.emotion||'happy'; }
         else { text = content.trim(); }
       }catch(pe){ text = content.trim(); }
-      if(!text) text = 'こんにちは♪ 来鳥アルエだよ！今日も話しかけてね！';
+      if(!text) text = 'こんにちは♪ ことりアルエだよ！今日も話しかけてね！';
       // チャットバブルに表示＋喋る（showCharMessage内でaddAiBubbleも呼ばれるので直接呼ばない）
       showCharMessage(text, emotion);
     }catch(e){
       console.warn('welcome message failed:', e);
       // フォールバック
-      const fallback = 'こんにちは♪ 来鳥アルエだよ！今日も話しかけてね！';
+      const fallback = 'こんにちは♪ ことりアルエだよ！今日も話しかけてね！';
       showCharMessage(fallback, 'happy');
     }
   }, 800);
@@ -1839,9 +2062,6 @@ function startFallback(W,H){
       // タップ判定：移動量10px以内 && 300ms以内 && ドラッグ未実行
       if(!isDragging && dist<10 && elapsed<300){
         const rect=overlay.getBoundingClientRect();
-        spawnRipple(e.changedTouches[0].clientX-rect.left,
-                    e.changedTouches[0].clientY-rect.top,
-                    overlay);
         playSE_click();
       }
     }
@@ -1873,7 +2093,6 @@ function startFallback(W,H){
       const dx=e.clientX-tapStartX,dy=e.clientY-tapStartY;
       if(!isDragging && Math.sqrt(dx*dx+dy*dy)<10 && elapsed<200){
         const rect=overlay.getBoundingClientRect();
-        spawnRipple(e.clientX-rect.left,e.clientY-rect.top,overlay);
         playSE_click();
       }
     }
@@ -2088,7 +2307,7 @@ async function callAIForStamp(stamp){
   // 直近の会話履歴も渡してコンテキストを持たせる
   const recentHistory = chatHistory.slice(-4);
 
-  const systemPrompt = `あなたはVtuberの来鳥アルエです。ユーザーが「${stamp.label}」スタンプを送ってきました。
+  const systemPrompt = `あなたはVtuberの来鳥アルエ（ことりあるえ）です。ユーザーが「${stamp.label}」スタンプを送ってきました。
 シチュエーション: ${situation} / 好感度: ${affLv}
 ${countNote}
 ${prevNote}
@@ -2142,7 +2361,7 @@ async function callAI(userText){
   const recentHistory = chatHistory.slice(-6).map(m=>
     (m.role==='user'?'ユーザー':'アルエ')+': '+m.content
   ).join('\n');
-  const systemPrompt=`あなたはVtuberの「来鳥アルエ」です。以下のキャラクター設定を完全に守り、自然でリアルな会話をしてください。
+  const systemPrompt=`あなたはVtuberの「来鳥アルエ（ことりあるえ）」です。以下のキャラクター設定を完全に守り、自然でリアルな会話をしてください。
 
 【キャラクター詳細】
 - 19歳の元気で明るいVtuber女の子
@@ -2256,7 +2475,7 @@ function generateOfflineResponse(text){
     return r[Math.floor(Math.random()*r.length)];
   }
   if(/名前|なまえ|だれ|誰/.test(t)){
-    return {text:'アルエだよ！来鳥アルエって書いてアルエ♪ よろしくね〜！',emotion:'happy',affection_delta:2};
+    return {text:'アルエだよ！来鳥アルエって書いてことりアルエって読むんだよ♪ よろしくね〜！',emotion:'happy',affection_delta:2};
   }
   if(/アニメ|ゲーム|漫画|映画|音楽/.test(t)){
     const r=[
@@ -2391,6 +2610,68 @@ window.addEventListener('load',function(){
   }
   tryInitLive2D();
 });
+</script>
+
+<script>
+/* ══════════════════════════════════════════════
+   グローバルタップキラキラエフェクト（全画面）
+══════════════════════════════════════════════ */
+(function initGlobalTapFx(){
+  const tapFx = document.getElementById('global-tap-fx');
+  if(!tapFx) return;
+
+  const COLORS  = ['#FF80CC','#CC80FF','#80C8FF','#FFD080','#FF80AA','#A0DDFF','#FFB3DE','#FFAAEE'];
+  const EMOJIS  = ['✦','★','✸','✺','✿','♥'];
+
+  function spawnBurst(x, y){
+    const burst = document.createElement('div');
+    burst.className = 'tap-burst';
+    burst.style.left = x + 'px';
+    burst.style.top  = y + 'px';
+
+    const count = 7 + Math.floor(Math.random()*5); // 7〜11個（小さめ）
+    for(let i = 0; i < count; i++){
+      const angle = (360 / count) * i + Math.random()*25 - 12;
+      const dist  = 25 + Math.random()*35; // 飛距離（小さく）
+      const rad   = angle * Math.PI / 180;
+      const tx    = Math.round(Math.cos(rad) * dist);
+      const ty    = Math.round(Math.sin(rad) * dist);
+      const col   = COLORS[Math.floor(Math.random()*COLORS.length)];
+      const sz    = (4 + Math.random()*5).toFixed(1) + 'px'; // 4〜9px（小さく）
+      const dur   = (0.45 + Math.random()*0.35).toFixed(2) + 's';
+      const delay = (Math.random()*0.06).toFixed(2) + 's';
+      const rot   = Math.round(Math.random()*360) + 'deg';
+
+      if(Math.random() < 0.28){
+        const el = document.createElement('span');
+        el.className = 'tb-heart';
+        el.textContent = EMOJIS[Math.floor(Math.random()*EMOJIS.length)];
+        el.style.cssText = `--sz:${sz};--col:${col};--tx:${tx}px;--ty:${ty}px;--dur:${dur};--delay:${delay};--rot:${rot};color:${col};`;
+        burst.appendChild(el);
+      } else {
+        const el = document.createElement('div');
+        el.className = 'tb-star';
+        el.style.cssText = `--sz:${sz};--col:${col};--tx:${tx}px;--ty:${ty}px;--dur:${dur};--delay:${delay};--rot:${rot};`;
+        burst.appendChild(el);
+      }
+    }
+
+    tapFx.appendChild(burst);
+    setTimeout(()=>{ if(burst.parentNode) burst.remove(); }, 900);
+  }
+
+  // window全体にキャプチャフェーズで登録（どの画面でも反応）
+  window.addEventListener('pointerdown', (e)=>{
+    spawnBurst(e.clientX, e.clientY);
+  }, {capture: true, passive: true});
+
+  // モバイル touchstart（pointer未対応端末向け）
+  window.addEventListener('touchstart', (e)=>{
+    const t = e.touches[0];
+    if(t) spawnBurst(t.clientX, t.clientY);
+  }, {capture: true, passive: true});
+
+})();
 </script>
 </body>
 </html>

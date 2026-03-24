@@ -1,9 +1,8 @@
 // lib/screens/consent_screen.dart
-// 初回起動時の利用規約・プライバシーポリシー同意画面
+// 初回起動時の利用規約・プライバシーポリシー同意画面（世界観版）
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../theme/app_theme.dart';
 import 'chat_screen.dart';
 
 class ConsentScreen extends StatefulWidget {
@@ -12,12 +11,30 @@ class ConsentScreen extends StatefulWidget {
   State<ConsentScreen> createState() => _ConsentScreenState();
 }
 
-class _ConsentScreenState extends State<ConsentScreen> {
+class _ConsentScreenState extends State<ConsentScreen>
+    with SingleTickerProviderStateMixin {
   bool _agreedTerms   = false;
   bool _agreedPrivacy = false;
   bool _isOver13      = false;
 
+  late AnimationController _fadeCtrl;
+  late Animation<double> _fadeAnim;
+
   bool get _canProceed => _agreedTerms && _agreedPrivacy && _isOver13;
+
+  @override
+  void initState() {
+    super.initState();
+    _fadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
+    _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
+    _fadeCtrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _fadeCtrl.dispose();
+    super.dispose();
+  }
 
   Future<void> _onAgree() async {
     final prefs = await SharedPreferences.getInstance();
@@ -25,151 +42,213 @@ class _ConsentScreenState extends State<ConsentScreen> {
     await prefs.setString('consent_date', DateTime.now().toIso8601String());
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const ChatScreen()),
+      PageRouteBuilder(
+        pageBuilder: (_, a, __) => const ChatScreen(),
+        transitionDuration: const Duration(milliseconds: 600),
+        transitionsBuilder: (_, a, __, child) =>
+            FadeTransition(opacity: a, child: child),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.bgDeep,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ヘッダー
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: AppTheme.neonCyan.withValues(alpha: 0.2)),
-                ),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    'VTUBER CHAT',
-                    style: TextStyle(
-                      fontSize: 22, fontWeight: FontWeight.w800,
-                      letterSpacing: 8, color: AppTheme.neonCyan,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'はじめにご確認ください',
-                    style: TextStyle(
-                      fontSize: 13, color: Colors.white70, letterSpacing: 2,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // 内容スクロール
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildSection(
-                      icon: Icons.warning_amber_rounded,
-                      iconColor: Colors.orange,
-                      title: 'ご利用にあたって',
-                      content:
-                          '本アプリはAI（ChatGPT）を使用したVtuberチャットアプリです。\n\n'
-                          '• AIが生成する返答はフィクションです\n'
-                          '• 個人情報を入力しないでください\n'
-                          '• 13歳未満の方はご利用いただけません\n'
-                          '• 過度な依存にはご注意ください',
-                    ),
-                    const SizedBox(height: 16),
-                    _buildSection(
-                      icon: Icons.lock_outline,
-                      iconColor: AppTheme.neonCyan,
-                      title: 'プライバシーポリシー（要約）',
-                      content:
-                          '• 送信されたメッセージはOpenAI APIに送信されます\n'
-                          '• OpenAIのプライバシーポリシーが適用されます\n'
-                          '• アプリ内データ（好感度等）はデバイスにのみ保存されます\n'
-                          '• 広告・アナリティクスSDKは含まれません',
-                      linkText: '全文を読む',
-                      onLinkTap: () => _showFullText(context, _privacyPolicy, 'プライバシーポリシー'),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildSection(
-                      icon: Icons.article_outlined,
-                      iconColor: AppTheme.neonPurple,
-                      title: '利用規約（要約）',
-                      content:
-                          '• 商用目的での無断利用は禁止します\n'
-                          '• 違法・有害なコンテンツの生成を試みないでください\n'
-                          '• サービスは予告なく変更・終了する場合があります',
-                      linkText: '全文を読む',
-                      onLinkTap: () => _showFullText(context, _terms, '利用規約'),
-                    ),
-                    const SizedBox(height: 28),
-
-                    // チェックボックス群
-                    _buildCheckbox(
-                      value: _isOver13,
-                      label: '私は13歳以上です',
-                      onChanged: (v) => setState(() => _isOver13 = v!),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildCheckbox(
-                      value: _agreedPrivacy,
-                      label: 'プライバシーポリシーに同意します',
-                      onChanged: (v) => setState(() => _agreedPrivacy = v!),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildCheckbox(
-                      value: _agreedTerms,
-                      label: '利用規約に同意します',
-                      onChanged: (v) => setState(() => _agreedTerms = v!),
-                    ),
-                    const SizedBox(height: 32),
-
-                    // 同意ボタン
-                    SizedBox(
-                      width: double.infinity,
-                      child: AnimatedOpacity(
-                        opacity: _canProceed ? 1.0 : 0.4,
-                        duration: const Duration(milliseconds: 300),
-                        child: ElevatedButton(
-                          onPressed: _canProceed ? _onAgree : null,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.neonCyan,
-                            foregroundColor: AppTheme.bgDeep,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFFFFD6F0),
+              Color(0xFFE8B4F8),
+              Color(0xFFC9A8F5),
+              Color(0xFFA8C8FF),
+              Color(0xFFD4F0FF),
+            ],
+            stops: [0.0, 0.2, 0.45, 0.75, 1.0],
+          ),
+        ),
+        child: FadeTransition(
+          opacity: _fadeAnim,
+          child: SafeArea(
+            child: Column(
+              children: [
+                // ── ヘッダー ──
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
+                  child: Column(
+                    children: [
+                      // ロゴ
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.55),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFD090FF).withValues(alpha: 0.25),
+                              blurRadius: 20,
+                              spreadRadius: 2,
                             ),
-                            elevation: 0,
-                          ),
-                          child: const Text(
-                            '同意してはじめる',
-                            style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 2,
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              '君とV',
+                              style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 4,
+                                foreground: Paint()
+                                  ..shader = const LinearGradient(
+                                    colors: [Color(0xFFE060C0), Color(0xFF8060E8), Color(0xFF60A0FF)],
+                                  ).createShader(const Rect.fromLTWH(0, 0, 200, 40)),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'はじめにご確認ください',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: const Color(0xFF7040A0).withValues(alpha: 0.7),
+                                letterSpacing: 2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // ── スクロール内容 ──
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildSection(
+                          emoji: '💬',
+                          color: const Color(0xFFE080C0),
+                          title: 'このアプリについて',
+                          content:
+                              'AI（ChatGPT）を使ったVtuberチャットアプリです。\n\n'
+                              '• AIの返答はフィクションです\n'
+                              '• 個人情報を入力しないでください\n'
+                              '• 13歳未満の方はご利用いただけません\n'
+                              '• 過度な依存にはご注意ください',
+                        ),
+                        const SizedBox(height: 12),
+                        _buildSection(
+                          emoji: '🔒',
+                          color: const Color(0xFF8060E8),
+                          title: 'プライバシーポリシー',
+                          content:
+                              '• メッセージはOpenAI APIに送信されます\n'
+                              '• アプリ内データはデバイスにのみ保存されます\n'
+                              '• 広告・アナリティクスSDKは含まれません',
+                          linkText: '全文を読む',
+                          onLinkTap: () => _showFullText(context, _privacyPolicy, 'プライバシーポリシー'),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildSection(
+                          emoji: '📋',
+                          color: const Color(0xFF60A0E8),
+                          title: '利用規約',
+                          content:
+                              '• 商用目的での無断利用は禁止します\n'
+                              '• 違法・有害なコンテンツの生成を試みないでください\n'
+                              '• サービスは予告なく変更・終了する場合があります',
+                          linkText: '全文を読む',
+                          onLinkTap: () => _showFullText(context, _terms, '利用規約'),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // ── チェックボックス ──
+                        _buildCheckbox(
+                          value: _isOver13,
+                          label: '私は13歳以上です',
+                          color: const Color(0xFFE080C0),
+                          onChanged: (v) => setState(() => _isOver13 = v!),
+                        ),
+                        const SizedBox(height: 10),
+                        _buildCheckbox(
+                          value: _agreedPrivacy,
+                          label: 'プライバシーポリシーに同意します',
+                          color: const Color(0xFF8060E8),
+                          onChanged: (v) => setState(() => _agreedPrivacy = v!),
+                        ),
+                        const SizedBox(height: 10),
+                        _buildCheckbox(
+                          value: _agreedTerms,
+                          label: '利用規約に同意します',
+                          color: const Color(0xFF60A0E8),
+                          onChanged: (v) => setState(() => _agreedTerms = v!),
+                        ),
+                        const SizedBox(height: 28),
+
+                        // ── 同意ボタン ──
+                        AnimatedScale(
+                          scale: _canProceed ? 1.0 : 0.97,
+                          duration: const Duration(milliseconds: 200),
+                          child: AnimatedOpacity(
+                            opacity: _canProceed ? 1.0 : 0.45,
+                            duration: const Duration(milliseconds: 300),
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: GestureDetector(
+                                onTap: _canProceed ? _onAgree : null,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 18),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [Color(0xFFE070C8), Color(0xFF9060E0), Color(0xFF60A0FF)],
+                                    ),
+                                    borderRadius: BorderRadius.circular(50),
+                                    boxShadow: _canProceed ? [
+                                      BoxShadow(
+                                        color: const Color(0xFFB060E0).withValues(alpha: 0.45),
+                                        blurRadius: 20,
+                                        offset: const Offset(0, 6),
+                                      ),
+                                    ] : [],
+                                  ),
+                                  child: const Text(
+                                    '同意してはじめる  ✨',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 2,
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
+                        const SizedBox(height: 24),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildSection({
-    required IconData icon,
-    required Color iconColor,
+    required String emoji,
+    required Color color,
     required String title,
     required String content,
     String? linkText,
@@ -178,23 +257,30 @@ class _ConsentScreenState extends State<ConsentScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        color: Colors.white.withValues(alpha: 0.60),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.12),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            Icon(icon, color: iconColor, size: 18),
+            Text(emoji, style: const TextStyle(fontSize: 16)),
             const SizedBox(width: 8),
             Text(title, style: TextStyle(
-              color: iconColor, fontWeight: FontWeight.bold, fontSize: 13,
+              color: color, fontWeight: FontWeight.bold, fontSize: 13,
             )),
           ]),
           const SizedBox(height: 10),
-          Text(content, style: const TextStyle(
-            color: Colors.white70, fontSize: 12, height: 1.7,
+          Text(content, style: TextStyle(
+            color: const Color(0xFF4A3060).withValues(alpha: 0.8),
+            fontSize: 12, height: 1.75,
           )),
           if (linkText != null) ...[
             const SizedBox(height: 8),
@@ -203,10 +289,10 @@ class _ConsentScreenState extends State<ConsentScreen> {
               child: Text(
                 linkText,
                 style: TextStyle(
-                  color: AppTheme.neonCyan,
+                  color: color,
                   fontSize: 12,
                   decoration: TextDecoration.underline,
-                  decorationColor: AppTheme.neonCyan,
+                  decorationColor: color,
                 ),
               ),
             ),
@@ -219,29 +305,47 @@ class _ConsentScreenState extends State<ConsentScreen> {
   Widget _buildCheckbox({
     required bool value,
     required String label,
+    required Color color,
     required ValueChanged<bool?> onChanged,
   }) {
     return GestureDetector(
       onTap: () => onChanged(!value),
-      child: Row(
-        children: [
-          Container(
-            width: 22, height: 22,
-            decoration: BoxDecoration(
-              color: value ? AppTheme.neonCyan.withValues(alpha: 0.2) : Colors.transparent,
-              border: Border.all(
-                color: value ? AppTheme.neonCyan : Colors.white30,
-                width: 1.5,
-              ),
-              borderRadius: BorderRadius.circular(5),
-            ),
-            child: value
-                ? Icon(Icons.check, size: 14, color: AppTheme.neonCyan)
-                : null,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: value
+              ? color.withValues(alpha: 0.12)
+              : Colors.white.withValues(alpha: 0.45),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: value ? color.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.5),
+            width: 1.5,
           ),
-          const SizedBox(width: 12),
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13)),
-        ],
+        ),
+        child: Row(
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 22, height: 22,
+              decoration: BoxDecoration(
+                color: value ? color : Colors.white.withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(6),
+                boxShadow: value ? [
+                  BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 6),
+                ] : [],
+              ),
+              child: value
+                  ? const Icon(Icons.check, size: 14, color: Colors.white)
+                  : null,
+            ),
+            const SizedBox(width: 12),
+            Text(label, style: TextStyle(
+              color: const Color(0xFF4A3060).withValues(alpha: 0.85),
+              fontSize: 13,
+              fontWeight: value ? FontWeight.w600 : FontWeight.normal,
+            )),
+          ],
+        ),
       ),
     );
   }
@@ -250,41 +354,49 @@ class _ConsentScreenState extends State<ConsentScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF0D1225),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => DraggableScrollableSheet(
-        initialChildSize: 0.85,
-        maxChildSize: 0.95,
-        minChildSize: 0.5,
-        expand: false,
-        builder: (_, sc) => Column(
-          children: [
-            Container(
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              width: 40, height: 4,
-              decoration: BoxDecoration(
-                color: Colors.white30,
-                borderRadius: BorderRadius.circular(2),
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFF5E8FF), Color(0xFFE8F0FF)],
+          ),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: DraggableScrollableSheet(
+          initialChildSize: 0.85,
+          maxChildSize: 0.95,
+          minChildSize: 0.5,
+          expand: false,
+          builder: (_, sc) => Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 10),
+                width: 36, height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFB080D0).withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: Text(title, style: const TextStyle(
-                color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16,
-              )),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                controller: sc,
-                padding: const EdgeInsets.all(20),
-                child: Text(text, style: const TextStyle(
-                  color: Colors.white70, fontSize: 12, height: 1.8,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                child: Text(title, style: const TextStyle(
+                  color: Color(0xFF6040A0),
+                  fontWeight: FontWeight.bold, fontSize: 16,
                 )),
               ),
-            ),
-          ],
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: sc,
+                  padding: const EdgeInsets.all(20),
+                  child: Text(text, style: const TextStyle(
+                    color: Color(0xFF4A3060), fontSize: 12, height: 1.9,
+                  )),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

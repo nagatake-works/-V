@@ -17,7 +17,7 @@ if (keyPropertiesFile.exists()) {
 
 android {
     namespace = "com.vtuberchat.chat"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 35
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -40,15 +40,23 @@ android {
 
     defaultConfig {
         applicationId = "com.vtuberchat.chat"
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        minSdk = 24          // Android 7.0 以上（WebView安定動作）
+        targetSdk = 35       // Android 15
+        versionCode = 1
+        versionName = "1.0.0"
     }
 
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = true      // R8コード圧縮でサイズ削減
+            isShrinkResources = true    // 未使用リソース削除
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+        debug {
             isMinifyEnabled = false
             isShrinkResources = false
         }
@@ -58,4 +66,3 @@ android {
 flutter {
     source = "../.."
 }
-
