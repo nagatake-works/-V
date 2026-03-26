@@ -42,8 +42,8 @@ android {
         applicationId = "com.vtuberchat.chat"
         minSdk = 24          // Android 7.0 以上（WebView安定動作）
         targetSdk = 35       // Android 15
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
     }
 
     buildTypes {

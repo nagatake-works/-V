@@ -46,3 +46,9 @@ app.*.map.json
 
 # API keys
 .env
+
+# API keys
+web/env.txt
+assets/webapp/env.txt
+.env
+*.env
