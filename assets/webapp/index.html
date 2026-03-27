@@ -1621,171 +1621,210 @@ body.model-browse-open #miniroom-nav-btn{
   filter:blur(2px);
 }
 
+/* ── ショップリスト（1カラム横長カード） ── */
 #shop-list{
-  flex:1;overflow-y:auto;padding:10px 10px 32px;
-  display:flex;flex-direction:column;gap:8px;
+  flex:1;overflow-y:auto;padding:12px 10px 44px;
+  display:flex;flex-direction:column;gap:10px;
   position:relative;z-index:2;
   -webkit-overflow-scrolling:touch;
-  scroll-padding-bottom:30px;
+  scroll-padding-bottom:44px;
 }
 #shop-list::-webkit-scrollbar{width:3px;}
-#shop-list::-webkit-scrollbar-thumb{background:rgba(0,200,255,.2);}
+#shop-list::-webkit-scrollbar-thumb{background:rgba(0,200,255,.25);border-radius:3px;}
+#shop-list.single-col{}
 
+/* ── 横長カード（近未来UI） ── */
 .shop-item{
-  display:flex;align-items:center;gap:12px;
-  background:linear-gradient(135deg,rgba(8,14,30,.85),rgba(4,8,20,.95));
-  border:1px solid rgba(0,200,255,.12);
-  border-radius:8px;padding:12px;
+  display:flex;flex-direction:row;align-items:stretch;
+  background:linear-gradient(135deg,rgba(6,12,28,.95) 0%,rgba(3,7,18,.97) 100%);
+  border:1px solid rgba(0,200,255,.08);
+  border-radius:14px;padding:0;
   cursor:pointer;position:relative;overflow:hidden;
-  transition:all .25s cubic-bezier(.22,.61,.36,1);
-  backdrop-filter:blur(6px);
-  min-height:0;
+  transition:all .3s cubic-bezier(.22,.61,.36,1);
+  min-height:auto;
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
 }
 .shop-item::before{
   content:'';position:absolute;top:0;left:0;right:0;height:1px;
-  background:linear-gradient(90deg,transparent 5%,rgba(0,200,255,.2) 30%,rgba(0,200,255,.25) 50%,rgba(0,200,255,.2) 70%,transparent 95%);
-}
-.shop-item::after{
-  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
-  background:linear-gradient(90deg,transparent 10%,rgba(0,200,255,.06) 50%,transparent 90%);
+  background:linear-gradient(90deg,transparent 5%,rgba(0,220,255,.15) 50%,transparent 95%);
+  z-index:1;
 }
 .shop-item:active{
-  transform:scale(.985);
-  background:linear-gradient(135deg,rgba(0,200,255,.08),rgba(8,14,30,.9));
-  border-color:rgba(0,200,255,.3);
-  box-shadow:0 0 20px rgba(0,200,255,.1),inset 0 0 20px rgba(0,200,255,.03);
+  transform:scale(.98);
+  border-color:rgba(0,220,255,.3);
+  box-shadow:0 0 24px rgba(0,200,255,.1),inset 0 0 16px rgba(0,200,255,.02);
 }
 .shop-item.equipped{
-  border-color:rgba(0,255,150,.35);
-  background:linear-gradient(135deg,rgba(0,255,150,.06),rgba(4,20,12,.9));
-  box-shadow:0 0 16px rgba(0,255,150,.08),inset 0 0 30px rgba(0,255,150,.03);
-}
-.shop-item.equipped::after{
-  background:linear-gradient(90deg,transparent 5%,rgba(0,255,150,.15) 50%,transparent 95%);
+  border-color:rgba(0,255,150,.25);
+  background:linear-gradient(135deg,rgba(0,255,150,.03) 0%,rgba(3,7,18,.97) 100%);
+  box-shadow:0 0 14px rgba(0,255,150,.05);
 }
 .shop-item.owned{
-  border-color:rgba(0,200,255,.3);
-  background:linear-gradient(135deg,rgba(0,200,255,.05),rgba(4,12,24,.9));
-  box-shadow:0 0 12px rgba(0,200,255,.06);
-}
-.shop-item.owned .shop-owned-badge{
-  position:absolute;top:8px;right:10px;
-  font-size:7px;letter-spacing:1.8px;color:rgba(0,200,255,.7);
-  background:rgba(0,200,255,.08);border:1px solid rgba(0,200,255,.2);
-  padding:2px 8px;border-radius:10px;
-  text-transform:uppercase;font-weight:600;
+  border-color:rgba(0,200,255,.15);
 }
 
-/* アイコンエリア */
-.shop-item-icon{
-  width:72px;height:72px;flex-shrink:0;
+/* 左：アイコンエリア */
+.shop-card-top{
+  position:relative;
   display:flex;align-items:center;justify-content:center;
-  background:linear-gradient(135deg,rgba(0,200,255,.04),rgba(0,0,0,.3));
-  border:1px solid rgba(0,200,255,.08);border-radius:8px;
-  position:relative;overflow:hidden;
-  font-size:32px;
+  width:88px;min-width:88px;flex-shrink:0;
+  background:linear-gradient(160deg,rgba(0,200,255,.03),transparent);
+  border-right:1px solid rgba(0,200,255,.05);
+  padding:10px 4px;
 }
-.shop-item-icon::after{
-  content:'';position:absolute;inset:0;
-  background:linear-gradient(180deg,rgba(0,200,255,.06) 0%,transparent 40%);
-  pointer-events:none;
+.shop-card-top img{
+  width:60px;height:60px;object-fit:contain;
+  filter:drop-shadow(0 3px 10px rgba(0,180,255,.3));
+  transition:transform .3s;
 }
-.shop-item-icon img{
-  width:64px!important;height:64px!important;
-  object-fit:contain!important;
-  filter:drop-shadow(0 2px 6px rgba(0,200,255,.35))!important;
-  border-radius:4px!important;
+.shop-item:active .shop-card-top img{transform:scale(1.05);}
+.shop-card-top .card-emoji{font-size:36px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.3));}
+.shop-card-rarity{
+  position:absolute;top:5px;left:5px;
+  font-size:7px;font-weight:800;letter-spacing:1.2px;
+  padding:1px 5px;border-radius:3px;
+  text-transform:uppercase;
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+}
+.rarity-N .shop-card-rarity{color:rgba(160,190,220,.7);background:rgba(160,190,220,.08);border:1px solid rgba(160,190,220,.12);}
+.rarity-R .shop-card-rarity{color:rgba(0,210,255,.85);background:rgba(0,210,255,.1);border:1px solid rgba(0,210,255,.2);}
+.rarity-SR .shop-card-rarity{color:rgba(190,110,255,.9);background:rgba(190,110,255,.1);border:1px solid rgba(190,110,255,.2);}
+.rarity-SSR .shop-card-rarity{color:rgba(255,210,60,.95);background:rgba(255,210,60,.1);border:1px solid rgba(255,210,60,.2);text-shadow:0 0 6px rgba(255,200,60,.3);}
+.shop-card-badge{
+  position:absolute;bottom:5px;left:50%;transform:translateX(-50%);
+  font-size:7px;font-weight:700;letter-spacing:.8px;
+  padding:1px 7px;border-radius:3px;white-space:nowrap;
+}
+.shop-card-badge.badge-equipped{color:rgba(0,255,150,.9);background:rgba(0,255,150,.1);border:1px solid rgba(0,255,150,.2);}
+.shop-card-badge.badge-owned{color:rgba(0,200,255,.7);background:rgba(0,200,255,.06);border:1px solid rgba(0,200,255,.12);}
+
+/* 右：情報＋ボタンエリア */
+.shop-card-body{
+  flex:1;min-width:0;
+  padding:10px 12px 10px 10px;
+  display:flex;flex-direction:column;gap:3px;
+}
+.shop-card-name{
+  font-size:13px;font-weight:700;color:rgba(230,245,255,.95);
+  line-height:1.3;letter-spacing:.3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.shop-card-desc{
+  font-size:9px;color:rgba(0,200,255,.4);line-height:1.4;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.shop-card-stats{
+  display:flex;flex-wrap:wrap;gap:4px;margin-top:3px;
+}
+.shop-card-stats .stat-chip{
+  font-size:8px;font-weight:700;color:rgba(0,255,180,.8);
+  background:rgba(0,255,150,.05);border:1px solid rgba(0,255,150,.1);
+  border-radius:4px;padding:2px 6px;line-height:1.3;
+}
+.shop-card-stats .stat-chip.negative{color:rgba(255,100,80,.8);background:rgba(255,80,60,.05);border-color:rgba(255,80,60,.1);}
+.shop-card-skill{
+  font-size:8px;color:rgba(180,140,255,.7);
+  background:rgba(140,80,255,.04);border:1px solid rgba(140,80,255,.1);
+  border-radius:5px;padding:3px 7px;margin-top:2px;
+  line-height:1.3;display:flex;align-items:center;gap:4px;
+}
+.shop-card-skill .skill-name{font-weight:700;color:rgba(210,170,255,.9);}
+.shop-card-skill .skill-dmg{color:rgba(255,110,110,.85);font-weight:700;}
+.shop-card-skill .skill-effect-heal{color:rgba(80,255,140,.85);font-weight:700;}
+.shop-card-skill .skill-effect-reflect{color:rgba(80,180,255,.85);font-weight:700;}
+.shop-card-skill .skill-effect-pet{color:rgba(255,200,60,.85);font-weight:700;}
+
+/* 購入ボタン（情報エリア下部） */
+.shop-card-footer{
+  display:flex;align-items:center;justify-content:flex-end;margin-top:auto;padding-top:4px;
+}
+.shop-buy-btn{
+  padding:5px 14px;border:none;border-radius:6px;
+  font-size:10px;font-weight:700;cursor:pointer;
+  letter-spacing:.5px;transition:all .2s;
+  text-align:center;white-space:nowrap;
+}
+.shop-buy-btn.buy{
+  background:linear-gradient(135deg,rgba(0,200,255,.15),rgba(0,150,255,.1));
+  border:1px solid rgba(0,200,255,.25);color:rgba(0,225,255,.9);
+}
+.shop-buy-btn.buy:active{background:rgba(0,200,255,.25);}
+.shop-buy-btn.buy.disabled{opacity:.35;cursor:default;}
+.shop-buy-btn.equip{
+  background:linear-gradient(135deg,rgba(0,255,150,.15),rgba(0,200,100,.1));
+  border:1px solid rgba(0,255,150,.25);color:rgba(0,255,150,.9);
+}
+.shop-buy-btn.equip:active{background:rgba(0,255,150,.25);}
+.shop-buy-btn.equipped-state{
+  background:rgba(0,255,150,.04);
+  border:1px solid rgba(0,255,150,.1);color:rgba(0,255,150,.4);
+  cursor:default;font-size:9px;
 }
 
-/* 情報エリア */
-.shop-item-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}
-.shop-item-name{
-  font-size:12px;font-weight:700;color:rgba(220,240,255,.95);
-  letter-spacing:.4px;line-height:1.3;
-  text-shadow:0 0 12px rgba(0,200,255,.15);
-}
-.shop-item-desc{
-  font-size:9px;color:rgba(0,200,255,.45);letter-spacing:.3px;
-  line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;
-  -webkit-box-orient:vertical;overflow:hidden;
-}
-.shop-item-stats{
-  display:flex;flex-wrap:wrap;gap:4px 8px;
-  margin-top:2px;
-}
-.shop-item-stats .stat-chip{
-  font-size:9px;font-weight:600;color:rgba(0,255,180,.8);
-  background:rgba(0,255,150,.06);border:1px solid rgba(0,255,150,.15);
-  border-radius:4px;padding:1px 6px;
-  line-height:1.5;letter-spacing:.3px;
-}
-.shop-item-stats .stat-chip.negative{color:rgba(255,100,80,.8);background:rgba(255,80,60,.06);border-color:rgba(255,80,60,.15);}
+/* 耐久度バー */
+.shop-dur-bar{display:flex;align-items:center;gap:5px;margin-top:3px;}
+.dur-label{font-size:8px;color:rgba(140,180,200,.35);white-space:nowrap;}
+.dur-bar-wrap{flex:1;height:3px;background:rgba(0,200,255,.06);border-radius:2px;overflow:hidden;}
+.dur-bar-fill{height:100%;background:linear-gradient(90deg,rgba(0,200,255,.5),rgba(0,255,180,.5));border-radius:2px;transition:width .3s;}
+.dur-bar-fill.low{background:linear-gradient(90deg,rgba(255,200,60,.6),rgba(255,150,30,.6));}
+.dur-bar-fill.critical{background:linear-gradient(90deg,rgba(255,80,60,.6),rgba(255,40,40,.6));animation:durPulse 1s ease infinite;}
+@keyframes durPulse{0%,100%{opacity:1;}50%{opacity:.5;}}
 
-/* スキル表示 */
-.shop-item-skill{
-  margin-top:4px;padding:6px 8px;
-  background:linear-gradient(135deg,rgba(140,60,255,.08),rgba(80,40,200,.04));
-  border:1px solid rgba(140,80,255,.18);border-radius:6px;
-  font-size:9px;color:rgba(180,140,255,.85);
-  line-height:1.4;position:relative;overflow:hidden;
-}
-.shop-item-skill::before{
-  content:'';position:absolute;top:0;left:0;bottom:0;width:2px;
-  background:linear-gradient(180deg,rgba(180,100,255,.6),rgba(100,60,255,.3));
-}
-.shop-item-skill .skill-name{font-weight:700;color:rgba(210,170,255,.95);font-size:10px;}
-.shop-item-skill .skill-detail{
-  font-size:8.5px;color:rgba(180,140,255,.6);margin-top:2px;display:block;
-}
-.shop-item-skill .skill-dmg{color:rgba(255,110,110,.85);font-weight:700;}
-.shop-item-skill .skill-effect-heal{color:rgba(80,255,140,.85);font-weight:700;}
-.shop-item-skill .skill-effect-reflect{color:rgba(80,180,255,.85);font-weight:700;}
-.shop-item-skill .skill-effect-pet{color:rgba(255,200,60,.85);font-weight:700;}
-
-/* 価格エリア */
-.shop-item-price{
-  flex-shrink:0;align-self:center;
-  font-size:14px;font-weight:800;color:#ffd050;
-  display:flex;flex-direction:column;align-items:flex-end;gap:4px;
-  text-shadow:0 0 10px rgba(255,200,60,.3);
-  padding-left:8px;
-}
-.shop-item-price .equipped-label{
-  font-size:8px;color:rgba(0,255,150,.8);font-weight:600;
-  letter-spacing:1.2px;text-transform:uppercase;
-  background:rgba(0,255,150,.08);border:1px solid rgba(0,255,150,.2);
-  padding:2px 8px;border-radius:10px;
-}
-
-/* レアリティ（グロー＋左ボーダー強化） */
-.rarity-N{
-  border-left:3px solid rgba(120,160,200,.35);
-}
-.rarity-R{
-  border-left:3px solid rgba(0,180,255,.65);
-  box-shadow:inset 4px 0 16px rgba(0,200,255,.06);
-}
-.rarity-R .shop-item-icon{border-color:rgba(0,180,255,.2);}
-.rarity-SR{
-  border-left:3px solid rgba(180,80,255,.75);
-  box-shadow:inset 4px 0 16px rgba(180,80,255,.06);
-}
-.rarity-SR .shop-item-icon{border-color:rgba(180,80,255,.2);}
-.rarity-SR .shop-item-name{color:rgba(210,180,255,.95);}
+/* レアリティ左ライン */
+.rarity-N{border-left:3px solid rgba(120,160,200,.2);}
+.rarity-R{border-left:3px solid rgba(0,190,255,.45);}
+.rarity-SR{border-left:3px solid rgba(180,90,255,.55);box-shadow:inset 3px 0 12px rgba(180,90,255,.03);}
 .rarity-SSR{
-  border-left:3px solid rgba(255,200,60,.85);
-  box-shadow:inset 4px 0 18px rgba(255,200,60,.08);
-  background:linear-gradient(135deg,rgba(255,200,60,.04),rgba(8,14,30,.9));
+  border-left:3px solid rgba(255,200,60,.65);
+  box-shadow:inset 3px 0 14px rgba(255,200,60,.04);
 }
-.rarity-SSR .shop-item-icon{border-color:rgba(255,200,60,.25);}
-.rarity-SSR .shop-item-name{color:rgba(255,230,180,.95);text-shadow:0 0 12px rgba(255,200,60,.2);}
 @keyframes ssrShimmer{0%{left:-100%;}100%{left:200%;}}
-.rarity-SSR::before{
-  content:'';position:absolute;top:0;width:40%;height:100%;
-  background:linear-gradient(90deg,transparent,rgba(255,200,60,.04),transparent);
-  animation:ssrShimmer 4s ease-in-out infinite;
+.rarity-SSR .shop-card-top::after{
+  content:'';position:absolute;top:0;width:50%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,200,60,.05),transparent);
+  animation:ssrShimmer 3.5s ease-in-out infinite;
   pointer-events:none;
 }
+
+/* ── モデル切替ローディングオーバーレイ ── */
+#model-loading-overlay{
+  position:fixed;inset:0;z-index:9000;
+  display:none;flex-direction:column;
+  align-items:center;justify-content:center;gap:20px;
+  background:linear-gradient(160deg,rgba(4,8,18,.96),rgba(2,4,12,.98));
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  transition:opacity .4s ease;
+}
+#model-loading-overlay.show{display:flex;}
+#model-loading-overlay .ml-icon-wrap{
+  width:100px;height:100px;border-radius:50%;
+  border:3px solid rgba(140,100,255,.3);
+  overflow:hidden;
+  box-shadow:0 0 40px rgba(140,100,255,.15);
+  animation:mlPulse 1.5s ease-in-out infinite;
+}
+#model-loading-overlay .ml-icon-wrap img{width:100%;height:100%;object-fit:cover;}
+#model-loading-overlay .ml-name{
+  font-size:16px;font-weight:700;color:rgba(230,220,255,.9);
+  letter-spacing:.5px;text-shadow:0 0 12px rgba(140,100,255,.3);
+}
+#model-loading-overlay .ml-status{
+  font-size:10px;color:rgba(140,120,200,.5);letter-spacing:2px;
+  text-transform:uppercase;
+}
+#model-loading-overlay .ml-spinner{
+  width:32px;height:32px;border:3px solid rgba(140,100,255,.1);
+  border-top-color:rgba(140,100,255,.7);border-radius:50%;
+  animation:mlSpin 1s linear infinite;
+}
+#model-loading-overlay .ml-error{
+  font-size:11px;color:rgba(255,100,80,.8);
+  background:rgba(255,80,60,.06);border:1px solid rgba(255,80,60,.15);
+  border-radius:8px;padding:10px 16px;max-width:80%;text-align:center;
+  display:none;
+}
+@keyframes mlPulse{0%,100%{box-shadow:0 0 20px rgba(140,100,255,.1);}50%{box-shadow:0 0 50px rgba(140,100,255,.25);}}
+@keyframes mlSpin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
 
 /* 通知バッジ */
 .mr-notif{
@@ -2089,14 +2128,16 @@ body.model-browse-open #miniroom-nav-btn{
 }
 
 .mh-section-title{
-  font-size:11px;letter-spacing:3px;
-  color:rgba(180,150,255,.5);text-transform:uppercase;
-  margin-bottom:16px;
+  font-size:13px;letter-spacing:2px;
+  color:rgba(210,190,255,.75);text-transform:uppercase;
+  margin-bottom:18px;
   display:flex;align-items:center;gap:10px;
+  font-weight:700;
+  text-shadow:0 0 10px rgba(140,100,255,.2);
 }
 .mh-section-title::after{
   content:'';flex:1;height:1px;
-  background:linear-gradient(90deg,rgba(100,60,255,.2),transparent);
+  background:linear-gradient(90deg,rgba(140,100,255,.3),transparent);
 }
 
 .mh-upload-zone{
@@ -2115,10 +2156,10 @@ body.model-browse-open #miniroom-nav-btn{
   font-size:40px;color:rgba(140,100,255,.4);margin-bottom:8px;
 }
 .mh-upload-zone .upload-text{
-  font-size:11px;color:rgba(180,160,255,.5);letter-spacing:.5px;
+  font-size:13px;color:rgba(200,180,255,.65);letter-spacing:.5px;font-weight:500;
 }
 .mh-upload-zone .upload-hint{
-  font-size:9px;color:rgba(140,120,200,.3);margin-top:6px;
+  font-size:10px;color:rgba(160,140,220,.4);margin-top:6px;
 }
 
 .mh-preview-card{
@@ -2152,32 +2193,34 @@ body.model-browse-open #miniroom-nav-btn{
 }
 .mh-img-slot:active{border-color:rgba(140,100,255,.45);background:rgba(100,60,255,.06);}
 .mh-img-slot.filled{border-style:solid;border-color:rgba(0,255,150,.25);background:rgba(0,255,150,.03);}
-.mh-img-slot .slot-label{font-size:9px;color:rgba(180,160,255,.4);letter-spacing:.5px;}
-.mh-img-slot .slot-icon{font-size:28px;color:rgba(140,100,255,.3);}
+.mh-img-slot .slot-label{font-size:10px;color:rgba(200,180,255,.55);letter-spacing:.5px;font-weight:500;}
+.mh-img-slot .slot-icon{font-size:28px;color:rgba(160,120,255,.4);}
 .mh-img-slot img{
   width:80px;height:80px;object-fit:contain;border-radius:6px;
 }
 
-.mh-input-group{margin-bottom:16px;}
+.mh-input-group{margin-bottom:18px;}
 .mh-input-group label{
-  display:block;font-size:9px;letter-spacing:1.5px;
-  color:rgba(180,160,255,.5);text-transform:uppercase;
-  margin-bottom:6px;
+  display:flex;align-items:center;gap:4px;
+  font-size:11px;letter-spacing:1px;
+  color:rgba(220,200,255,.75);text-transform:uppercase;
+  margin-bottom:8px;font-weight:600;
 }
 .mh-input{
   width:100%;box-sizing:border-box;
-  padding:10px 14px;font-size:13px;
-  background:rgba(10,14,30,.8);
-  border:1px solid rgba(100,60,255,.15);border-radius:8px;
-  color:rgba(220,210,255,.9);outline:none;
-  transition:border-color .2s;
+  padding:12px 16px;font-size:14px;
+  background:rgba(12,16,36,.85);
+  border:1px solid rgba(140,100,255,.2);border-radius:10px;
+  color:rgba(240,230,255,.95);outline:none;
+  transition:border-color .2s,box-shadow .2s;
   font-family:inherit;
+  letter-spacing:.3px;
 }
-.mh-input:focus{border-color:rgba(140,100,255,.4);box-shadow:0 0 12px rgba(100,60,255,.08);}
-.mh-input::placeholder{color:rgba(140,120,200,.25);}
+.mh-input:focus{border-color:rgba(160,120,255,.5);box-shadow:0 0 16px rgba(140,100,255,.12);}
+.mh-input::placeholder{color:rgba(160,140,220,.35);font-size:13px;}
 textarea.mh-input{
-  min-height:100px;resize:vertical;
-  line-height:1.6;font-size:12px;
+  min-height:120px;resize:vertical;
+  line-height:1.7;font-size:13px;
 }
 
 .mh-btn{
@@ -2223,8 +2266,8 @@ textarea.mh-input{
   box-shadow:0 0 30px rgba(140,100,255,.15);
 }
 .mh-complete-icon-wrap img{width:100%;height:100%;object-fit:cover;}
-.mh-complete-name{font-size:18px;font-weight:800;color:rgba(230,220,255,.95);margin-bottom:4px;}
-.mh-complete-desc{font-size:10px;color:rgba(160,140,200,.5);margin-bottom:20px;letter-spacing:.5px;}
+.mh-complete-name{font-size:20px;font-weight:800;color:rgba(240,235,255,.98);margin-bottom:6px;text-shadow:0 0 12px rgba(140,100,255,.2);}
+.mh-complete-desc{font-size:12px;color:rgba(190,170,230,.6);margin-bottom:20px;letter-spacing:.3px;line-height:1.5;}
 
 /* モデルブラウズ画面 */
 #model-browse-modal{
@@ -2315,9 +2358,75 @@ textarea.mh-input{
   font-size:8px;color:rgba(140,100,255,.5);letter-spacing:1px;
   text-transform:uppercase;
 }
+
+/* ── モデル読み込みオーバーレイ ── */
+#model-loading-overlay{
+  position:fixed;inset:0;z-index:9999;
+  display:none;flex-direction:column;
+  align-items:center;justify-content:center;
+  background:linear-gradient(160deg,#020610 0%,#040318 50%,#020810 100%);
+  opacity:0;transition:opacity .4s ease;
+}
+#model-loading-overlay.show{display:flex;opacity:1;}
+#model-loading-overlay.fade-out{opacity:0;}
+.ml-icon-wrap{
+  width:100px;height:100px;border-radius:50%;
+  border:3px solid rgba(140,100,255,.25);
+  margin-bottom:24px;overflow:hidden;
+  background:rgba(10,10,30,.8);
+  box-shadow:0 0 40px rgba(140,100,255,.15),0 0 80px rgba(0,180,255,.08);
+  animation:mlPulse 1.8s ease-in-out infinite;
+}
+.ml-icon-wrap img{width:100%;height:100%;object-fit:cover;}
+.ml-icon-wrap .ml-icon-placeholder{
+  width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,rgba(100,60,255,.15),rgba(0,150,255,.1));
+}
+@keyframes mlPulse{
+  0%,100%{box-shadow:0 0 40px rgba(140,100,255,.15),0 0 80px rgba(0,180,255,.08);}
+  50%{box-shadow:0 0 60px rgba(140,100,255,.3),0 0 120px rgba(0,180,255,.15);border-color:rgba(140,100,255,.5);}
+}
+.ml-name{
+  font-size:18px;font-weight:800;color:rgba(240,235,255,.95);
+  margin-bottom:6px;letter-spacing:.5px;
+  text-shadow:0 0 16px rgba(140,100,255,.3);
+}
+.ml-status{
+  font-size:11px;color:rgba(180,160,230,.5);
+  letter-spacing:2px;text-transform:uppercase;
+  margin-bottom:20px;
+}
+.ml-bar-wrap{
+  width:180px;height:3px;border-radius:2px;
+  background:rgba(140,100,255,.1);overflow:hidden;
+}
+.ml-bar-fill{
+  width:0%;height:100%;border-radius:2px;
+  background:linear-gradient(90deg,rgba(140,100,255,.8),rgba(0,200,255,.7));
+  transition:width .3s ease;
+}
+@keyframes mlBarAnim{
+  0%{width:0%;}20%{width:30%;}50%{width:65%;}80%{width:85%;}100%{width:100%;}
+}
+.ml-bar-fill.animate{animation:mlBarAnim 2s ease forwards;}
+.ml-persona-preview{
+  margin-top:20px;max-width:260px;
+  font-size:10px;color:rgba(160,140,210,.35);
+  text-align:center;line-height:1.6;
+  letter-spacing:.3px;
+}
 </style>
 </head>
 <body class="loading">
+
+<!-- モデル読み込みオーバーレイ -->
+<div id="model-loading-overlay">
+  <div class="ml-icon-wrap" id="ml-icon"></div>
+  <div class="ml-name" id="ml-name">読み込み中...</div>
+  <div class="ml-status" id="ml-status">LOADING MODEL</div>
+  <div class="ml-bar-wrap"><div class="ml-bar-fill" id="ml-bar"></div></div>
+  <div class="ml-persona-preview" id="ml-persona"></div>
+</div>
 
 <!-- グローバルタップキラキラエフェクトレイヤー（全画面共通） -->
 <div id="global-tap-fx"></div>
@@ -2448,6 +2557,19 @@ textarea.mh-input{
       <input type="text" placeholder="モデル名で検索..." id="mb-search-input" oninput="filterModels()">
     </div>
     <div class="mb-grid" id="mb-grid"></div>
+  </div>
+
+  <!-- モデル切替ローディングオーバーレイ -->
+  <div id="model-loading-overlay">
+    <div class="ml-icon-wrap" id="ml-icon-wrap">
+      <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(100,60,255,.1);">
+        <span class="material-symbols-rounded" style="font-size:48px;color:rgba(140,100,255,.4);">smart_toy</span>
+      </div>
+    </div>
+    <div class="ml-name" id="ml-name">読み込み中...</div>
+    <div class="ml-status" id="ml-status">LOADING MODEL</div>
+    <div class="ml-spinner"></div>
+    <div class="ml-error" id="ml-error"></div>
   </div>
 
   <!-- シチュエーションパネル -->
@@ -5695,6 +5817,8 @@ window.switchShopTab = function(tab){
 function renderShopList(){
   const list = document.getElementById('shop-list');
   list.innerHTML = '';
+  // 消耗品タブは1カラム
+  list.classList.toggle('single-col', _shopTab === 'item');
   const items = SHOP_ITEMS[_shopTab] || [];
   items.forEach(item=>{
     const owned = (D.inventory[item.id]||0) > 0;
@@ -5703,76 +5827,74 @@ function renderShopList(){
     const div = document.createElement('div');
     div.className = `shop-item rarity-${item.rarity}${equipped?' equipped':''}${(owned&&!equipped)?' owned':''}`;
 
-    let statsText = Object.entries(item.stats).map(([k,v])=>`${k.toUpperCase()}+${v}`).join('  ');
-    let skillText = '';
-    if(item.skill){
-      let detailParts = [];
-      if(item.skill.dmgMul){
-        detailParts.push(`<span class="skill-dmg">ダメージ ×${item.skill.dmgMul}</span>`);
-      }
-      if(item.skill.effect === 'heal'){
-        detailParts.push(`<span class="skill-effect-heal">被ダメージ時HP回復</span>`);
-      } else if(item.skill.effect === 'reflect'){
-        detailParts.push(`<span class="skill-effect-reflect">ダメージ反射</span>`);
-      } else if(item.skill.effect === 'pet_heal'){
-        detailParts.push(`<span class="skill-effect-pet">毎ターンHP +${item.skill.val||0} 回復</span>`);
-      } else if(item.skill.effect === 'pet_attack'){
-        detailParts.push(`<span class="skill-effect-pet">追撃ダメージ ${item.skill.val||0}</span>`);
-      }
-      const detailHtml = detailParts.length ? `<span class="skill-detail">${detailParts.join('  ')}</span>` : '';
-      skillText = `⚡ <span class="skill-name">${item.skill.name}</span>${detailHtml}`;
-    }
-    let priceDisplay = equipped
-      ? `<div class="shop-item-price"><span class="equipped-label">✓ 装備中</span></div>`
-      : owned
-        ? `<div class="shop-item-price"><button style="background:linear-gradient(135deg,#40ff80,#20cc60);border:none;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;color:#fff" onclick="equipItem('${_shopTab}','${item.id}',event)">装備する</button></div>`
-        : item.consumable
-          ? `<div class="shop-item-price">${item.price}G</div>`
-          : `<div class="shop-item-price">${item.price}G</div>`;
+    const rarityLabel = {N:'N',R:'R',SR:'SR',SSR:'SSR'}[item.rarity]||item.rarity;
 
-    // 武器耐久度バー（装備中の武器のみ）
-    let durBarHtml = '';
-    if(_shopTab==='weapon' && item.maxDur){
-      if(equipped && D.weaponDur > 0){
-        const dpct = Math.round(D.weaponDur / item.maxDur * 100);
-        const dcls = dpct<=15?'critical':dpct<=35?'low':'';
-        durBarHtml = `<div class="shop-dur-bar"><span class="dur-label">耐久</span><div class="dur-bar-wrap"><div class="dur-bar-fill ${dcls}" style="width:${dpct}%"></div></div><span class="dur-label">${D.weaponDur}/${item.maxDur}</span></div>`;
-      } else if(!equipped) {
-        durBarHtml = `<div class="shop-dur-bar"><span class="dur-label">耐久</span><div class="dur-bar-wrap"><div class="dur-bar-fill" style="width:100%"></div></div><span class="dur-label">${item.maxDur}/${item.maxDur}</span></div>`;
-      }
-    }
-
-    // ステータスをチップ形式に
+    // ステータスチップ
     let statsChips = Object.entries(item.stats).map(([k,v])=>{
       const isNeg = v < 0;
       return `<span class="stat-chip${isNeg?' negative':''}">${k.toUpperCase()} ${isNeg?'':'+'}${v}</span>`;
     }).join('');
 
-    const rarityLabel = {N:'NORMAL',R:'RARE',SR:'S-RARE',SSR:'SS-RARE'}[item.rarity]||item.rarity;
-    const ownedBadge = (owned && !equipped) ? `<div class="shop-owned-badge">✓ OWNED</div>` : '';
+    // スキル
+    let skillHtml = '';
+    if(item.skill){
+      let detail = '';
+      if(item.skill.dmgMul) detail = `<span class="skill-dmg">x${item.skill.dmgMul}</span>`;
+      else if(item.skill.effect==='heal') detail = `<span class="skill-effect-heal">HP回復</span>`;
+      else if(item.skill.effect==='reflect') detail = `<span class="skill-effect-reflect">反射</span>`;
+      else if(item.skill.effect==='pet_heal') detail = `<span class="skill-effect-pet">HP+${item.skill.val||0}</span>`;
+      else if(item.skill.effect==='pet_attack') detail = `<span class="skill-effect-pet">ATK${item.skill.val||0}</span>`;
+      skillHtml = `<div class="shop-card-skill"><span class="skill-name">${item.skill.name}</span> ${detail}</div>`;
+    }
+
+    // バッジ
+    let badgeHtml = '';
+    if(equipped) badgeHtml = '<div class="shop-card-badge badge-equipped">装備中</div>';
+    else if(owned) badgeHtml = '<div class="shop-card-badge badge-owned">所持</div>';
+
+    // ボタン
+    let btnHtml = '';
+    if(equipped){
+      btnHtml = `<button class="shop-buy-btn equipped-state">✓ 装備中</button>`;
+    } else if(owned){
+      btnHtml = `<button class="shop-buy-btn equip" onclick="equipItem('${_shopTab}','${item.id}',event)">装備する</button>`;
+    } else {
+      btnHtml = `<button class="shop-buy-btn buy${canAfford?'':' disabled'}" ${canAfford?'':'disabled'}>${item.price}G で購入</button>`;
+    }
+
+    // 耐久度
+    let durHtml = '';
+    if(_shopTab==='weapon' && item.maxDur){
+      if(equipped && D.weaponDur > 0){
+        const dpct = Math.round(D.weaponDur / item.maxDur * 100);
+        const dcls = dpct<=15?'critical':dpct<=35?'low':'';
+        durHtml = `<div class="shop-dur-bar"><span class="dur-label">耐久</span><div class="dur-bar-wrap"><div class="dur-bar-fill ${dcls}" style="width:${dpct}%"></div></div><span class="dur-label">${D.weaponDur}/${item.maxDur}</span></div>`;
+      }
+    }
 
     div.innerHTML = `
-      ${ownedBadge}
-      <div class="shop-item-icon">${item.img
-        ? `<img src="${item.img}" alt="${item.name}">`
-        : item.icon}</div>
-      <div class="shop-item-info">
-        <div class="shop-item-name"><span style="font-size:8px;opacity:.5;margin-right:4px;letter-spacing:1px;">${rarityLabel}</span>${item.name}</div>
-        <div class="shop-item-desc">${item.desc}</div>
-        ${statsChips?`<div class="shop-item-stats">${statsChips}</div>`:''}
-        ${skillText?`<div class="shop-item-skill">${skillText}</div>`:''}
-        ${durBarHtml}
+      <div class="shop-card-top">
+        <div class="shop-card-rarity">${rarityLabel}</div>
+        ${badgeHtml}
+        ${item.img ? `<img src="${item.img}" alt="${item.name}" onerror="this.style.display='none';this.parentNode.insertAdjacentHTML('beforeend','<div class=card-emoji>❓</div>');">` : `<div class="card-emoji">${item.icon}</div>`}
       </div>
-      ${priceDisplay}
+      <div class="shop-card-body">
+        <div class="shop-card-name">${item.name}</div>
+        <div class="shop-card-desc">${item.desc}</div>
+        <div class="shop-card-stats">${statsChips}</div>
+        ${skillHtml}
+        ${durHtml}
+      </div>
+      <div class="shop-card-footer">
+        ${btnHtml}
+      </div>
     `;
-    if(_shopTab==='pet' && owned && !equipped){
+    if(!equipped && !owned && canAfford){
+      div.onclick = (e)=>{ if(!e.target.closest('.shop-buy-btn')) buyItem(_shopTab, item.id); };
+    } else if(_shopTab==='pet' && owned && !equipped){
       div.onclick = ()=>equipPet(item.id);
     } else if(_shopTab==='pet' && equipped){
       div.onclick = ()=>unequipPet();
-    } else if(!equipped && !owned && canAfford){
-      div.onclick = ()=>buyItem(_shopTab, item.id);
-    } else if(!equipped && !owned && !canAfford && !item.consumable){
-      div.style.cursor='default';
     }
     list.appendChild(div);
   });
@@ -6286,6 +6408,60 @@ function resetDraft(){
   window._mhDraft = _mhDraft;
 }
 
+// ── モデル読み込みオーバーレイ制御 ──
+function showModelLoading(model){
+  const overlay = document.getElementById('model-loading-overlay');
+  if(!overlay) return;
+  const iconWrap = document.getElementById('ml-icon-wrap');
+  const nameEl = document.getElementById('ml-name');
+  const statusEl = document.getElementById('ml-status');
+  const errorEl = document.getElementById('ml-error');
+
+  // エラー非表示
+  if(errorEl) errorEl.style.display = 'none';
+
+  // アイコン設定
+  if(iconWrap){
+    if(model.icon){
+      iconWrap.innerHTML = `<img src="${model.icon}" onerror="this.parentNode.innerHTML='<div style=\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(100,60,255,.1)\\'><span class=\\'material-symbols-rounded\\' style=\\'font-size:48px;color:rgba(140,100,255,.4)\\'>smart_toy</span></div>'">`;
+    } else {
+      iconWrap.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(100,60,255,.1);"><span class="material-symbols-rounded" style="font-size:48px;color:rgba(140,100,255,.4);">smart_toy</span></div>';
+    }
+  }
+  if(nameEl) nameEl.textContent = model.name || '読み込み中...';
+  if(statusEl) statusEl.textContent = 'LOADING MODEL';
+
+  overlay.classList.add('show');
+}
+
+function hideModelLoading(){
+  return new Promise(resolve=>{
+    const overlay = document.getElementById('model-loading-overlay');
+    if(!overlay){resolve();return;}
+    const statusEl = document.getElementById('ml-status');
+    if(statusEl) statusEl.textContent = 'READY';
+    setTimeout(()=>{
+      overlay.style.opacity = '0';
+      setTimeout(()=>{
+        overlay.classList.remove('show');
+        overlay.style.opacity = '';
+        resolve();
+      }, 400);
+    }, 300);
+  });
+}
+
+// モデル素材読み込みエラーハンドリング
+function showModelError(msg){
+  const errorEl = document.getElementById('ml-error');
+  if(errorEl){
+    errorEl.textContent = msg;
+    errorEl.style.display = 'block';
+  }
+  const statusEl = document.getElementById('ml-status');
+  if(statusEl) statusEl.textContent = 'ERROR';
+}
+
 // ── HUBモーダル開閉 ──
 window.openModelHub = function(){
   toggleSideMenu();
@@ -6322,7 +6498,7 @@ function renderStep(){
           <span class="material-symbols-rounded" style="font-size:18px;color:rgba(140,100,255,.6);">info</span>
           <span style="font-size:10px;color:rgba(180,160,255,.6);font-weight:600;letter-spacing:.5px;">ABOUT</span>
         </div>
-        <p style="font-size:10px;color:rgba(180,160,255,.4);line-height:1.7;margin:0;">
+        <p style="font-size:12px;color:rgba(210,195,255,.7);line-height:1.8;margin:0;">
           Live2Dモデルファイル (.zip / .model3.json) をアップロードできます。<br>
           モデルファイルがなくても、画像とプロンプトだけで登録可能です。
         </p>
@@ -6359,7 +6535,7 @@ function renderStep(){
           <span class="material-symbols-rounded" style="font-size:18px;color:rgba(140,100,255,.6);">photo_library</span>
           <span style="font-size:10px;color:rgba(180,160,255,.6);font-weight:600;letter-spacing:.5px;">IMAGE ASSETS</span>
         </div>
-        <p style="font-size:10px;color:rgba(180,160,255,.4);line-height:1.7;margin:0;">
+        <p style="font-size:12px;color:rgba(210,195,255,.7);line-height:1.8;margin:0;">
           アイコン画像（正方形推奨）とSDキャラ画像（背景透過PNG推奨）を登録してください。
         </p>
       </div>
@@ -6404,7 +6580,7 @@ function renderStep(){
       <div style="background:rgba(255,200,60,.04);border:1px solid rgba(255,200,60,.12);border-radius:8px;padding:10px 12px;margin-top:8px;">
         <div style="display:flex;align-items:center;gap:6px;">
           <span class="material-symbols-rounded" style="font-size:14px;color:rgba(255,200,60,.5);">tips_and_updates</span>
-          <span style="font-size:9px;color:rgba(255,200,60,.5);line-height:1.5;">人格設定が詳細なほど、よりキャラクターらしい会話が生成されます</span>
+          <span style="font-size:11px;color:rgba(255,220,100,.7);line-height:1.6;">人格設定が詳細なほど、よりキャラクターらしい会話が生成されます</span>
         </div>
       </div>
       <div class="mh-footer-btns">
@@ -6526,10 +6702,23 @@ window.saveNewModel = function(){
   };
   models.push(newModel);
   saveModels(models);
-  showDropToast(`「${newModel.name}」を登録しました！`);
+
+  // ローディングオーバーレイ表示
+  showModelLoading(newModel);
+  // モーダルを閉じる
   closeModelHub();
-  // 自動でチャット切替
-  switchToModel(newModel.id);
+
+  // 2秒後にモデル切替＋ローディング非表示
+  setTimeout(async ()=>{
+    try{
+      switchToModel(newModel.id);
+      await hideModelLoading();
+      showDropToast(`「${newModel.name}」を登録しました！`);
+    }catch(e){
+      showModelError('モデルの初期化に失敗しました: ' + (e.message||'不明なエラー'));
+      setTimeout(()=>hideModelLoading(), 2000);
+    }
+  }, 2000);
 };
 
 // ── モデルブラウズ ──
@@ -6581,8 +6770,27 @@ window.filterModels = function(){
 };
 
 window.selectModelFromBrowse = function(id){
-  switchToModel(id);
+  const all = getAllModels();
+  const model = all.find(m=>m.id === id);
+  if(!model){
+    showDropToast('モデルが見つかりません');
+    return;
+  }
+
+  // ローディングオーバーレイ表示
+  showModelLoading(model);
   closeModelBrowse();
+
+  // 2秒後にモデル切替＋ローディング非表示
+  setTimeout(async ()=>{
+    try{
+      switchToModel(id);
+      await hideModelLoading();
+    }catch(e){
+      showModelError('モデルの切り替えに失敗しました: ' + (e.message||'不明なエラー'));
+      setTimeout(()=>hideModelLoading(), 2000);
+    }
+  }, 1800);
 };
 
 // ── モデル切替システム ──
@@ -6603,7 +6811,10 @@ function getActiveModel(){
 window.switchToModel = function(id){
   const all = getAllModels();
   const model = all.find(m=>m.id === id);
-  if(!model) return;
+  if(!model){
+    showModelError('モデルが見つかりません');
+    return;
+  }
 
   _activeModelId = id;
   localStorage.setItem(ACTIVE_MODEL_KEY, id);
@@ -6614,6 +6825,46 @@ window.switchToModel = function(id){
   // バナー更新
   updateModelBanner();
 
+  // ── ルーム情報をアクティブモデルに連動 ──
+  try{
+    const nameBadge = document.querySelector('.mr-name-badge');
+    if(nameBadge){
+      const iconSrc = model.icon || 'img/arue_chibi.png';
+      nameBadge.innerHTML = `<img src="${iconSrc}" onerror="this.src='img/arue_chibi.png';showDropToast('アイコン読み込みエラー')">${model.name}`;
+    }
+    // ミニルーム吹き出しのキャラ名
+    const speechName = document.getElementById('mr-speech-name');
+    if(speechName) speechName.textContent = model.name.toUpperCase();
+
+    // SDキャラ画像がある場合、ミニキャラ表示を切替
+    const mcImg = document.getElementById('mc-img');
+    if(mcImg){
+      if(model.sdImg){
+        mcImg.src = model.sdImg;
+        mcImg.onerror = function(){
+          this.src = 'img/arue_chibi.png';
+          showDropToast('SDキャラ画像の読み込みに失敗しました');
+        };
+      } else if(id === 'arue_default'){
+        mcImg.src = 'img/arue_chibi.png';
+      } else {
+        // カスタムモデルにSDがない → デフォルト使用
+        mcImg.src = 'img/arue_chibi.png';
+      }
+    }
+
+    // ── ステータス表示の連動 ──
+    const statusNameEl = document.querySelector('.char-status-name,.mr-char-name');
+    if(statusNameEl) statusNameEl.textContent = model.name;
+
+    // チャットエリアのキャラ名を更新
+    const chatNameEls = document.querySelectorAll('.ai-name');
+    chatNameEls.forEach(el=>{ el.textContent = model.name; });
+
+  }catch(e){
+    showDropToast('モデル情報の適用中にエラーが発生しました');
+  }
+
   // アルエに戻す場合はバナー非表示
   if(id === 'arue_default'){
     removeModelBanner();
@@ -6622,10 +6873,14 @@ window.switchToModel = function(id){
     showDropToast(`「${model.name}」に切り替えました！`);
     // 初回挨拶
     setTimeout(()=>{
-      if(typeof showCharMessage === 'function'){
-        showCharMessage(model.greeting || 'よろしくね！', 'happy', true);
-      } else if(typeof addAiBubble === 'function'){
-        addAiBubble(model.greeting || 'よろしくね！', 'happy', '#a8d8ff');
+      try{
+        if(typeof showCharMessage === 'function'){
+          showCharMessage(model.greeting || 'よろしくね！', 'happy', true);
+        } else if(typeof addAiBubble === 'function'){
+          addAiBubble(model.greeting || 'よろしくね！', 'happy', '#a8d8ff');
+        }
+      }catch(e){
+        showDropToast('挨拶メッセージの表示に失敗しました');
       }
     }, 500);
   }
@@ -6640,7 +6895,7 @@ function updateModelBanner(){
   banner.className = 'model-switch-banner';
   banner.onclick = ()=>openModelBrowse();
   banner.innerHTML = `
-    <img src="${model.icon||'img/arue_chibi.png'}" onerror="this.style.display='none'">
+    <img src="${model.icon||'img/arue_chibi.png'}" onerror="this.src='img/arue_chibi.png';this.onerror=null;">
     <div class="msb-name">${model.name}とチャット中</div>
     <div class="msb-change">切替 ▸</div>
   `;
