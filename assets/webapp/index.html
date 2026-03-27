@@ -1786,46 +1786,6 @@ body.model-browse-open #miniroom-nav-btn{
   pointer-events:none;
 }
 
-/* ── モデル切替ローディングオーバーレイ ── */
-#model-loading-overlay{
-  position:fixed;inset:0;z-index:9000;
-  display:none;flex-direction:column;
-  align-items:center;justify-content:center;gap:20px;
-  background:linear-gradient(160deg,rgba(4,8,18,.96),rgba(2,4,12,.98));
-  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-  transition:opacity .4s ease;
-}
-#model-loading-overlay.show{display:flex;}
-#model-loading-overlay .ml-icon-wrap{
-  width:100px;height:100px;border-radius:50%;
-  border:3px solid rgba(140,100,255,.3);
-  overflow:hidden;
-  box-shadow:0 0 40px rgba(140,100,255,.15);
-  animation:mlPulse 1.5s ease-in-out infinite;
-}
-#model-loading-overlay .ml-icon-wrap img{width:100%;height:100%;object-fit:cover;}
-#model-loading-overlay .ml-name{
-  font-size:16px;font-weight:700;color:rgba(230,220,255,.9);
-  letter-spacing:.5px;text-shadow:0 0 12px rgba(140,100,255,.3);
-}
-#model-loading-overlay .ml-status{
-  font-size:10px;color:rgba(140,120,200,.5);letter-spacing:2px;
-  text-transform:uppercase;
-}
-#model-loading-overlay .ml-spinner{
-  width:32px;height:32px;border:3px solid rgba(140,100,255,.1);
-  border-top-color:rgba(140,100,255,.7);border-radius:50%;
-  animation:mlSpin 1s linear infinite;
-}
-#model-loading-overlay .ml-error{
-  font-size:11px;color:rgba(255,100,80,.8);
-  background:rgba(255,80,60,.06);border:1px solid rgba(255,80,60,.15);
-  border-radius:8px;padding:10px 16px;max-width:80%;text-align:center;
-  display:none;
-}
-@keyframes mlPulse{0%,100%{box-shadow:0 0 20px rgba(140,100,255,.1);}50%{box-shadow:0 0 50px rgba(140,100,255,.25);}}
-@keyframes mlSpin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
-
 /* 通知バッジ */
 .mr-notif{
   position:absolute;top:-4px;right:-4px;
@@ -2338,6 +2298,15 @@ textarea.mh-input{
   color:rgba(140,120,200,.3);font-size:11px;
   letter-spacing:1px;
 }
+.mb-card-delete{
+  position:absolute;bottom:6px;right:6px;
+  width:24px;height:24px;border-radius:6px;
+  background:rgba(255,60,60,.08);border:1px solid rgba(255,60,60,.15);
+  display:flex;align-items:center;justify-content:center;
+  color:rgba(255,80,80,.5);cursor:pointer;transition:all .2s;
+  z-index:2;
+}
+.mb-card-delete:active{background:rgba(255,60,60,.2);color:rgba(255,80,80,.9);}
 
 /* チャット中モデル切替バナー */
 .model-switch-banner{
@@ -2557,19 +2526,6 @@ textarea.mh-input{
       <input type="text" placeholder="モデル名で検索..." id="mb-search-input" oninput="filterModels()">
     </div>
     <div class="mb-grid" id="mb-grid"></div>
-  </div>
-
-  <!-- モデル切替ローディングオーバーレイ -->
-  <div id="model-loading-overlay">
-    <div class="ml-icon-wrap" id="ml-icon-wrap">
-      <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(100,60,255,.1);">
-        <span class="material-symbols-rounded" style="font-size:48px;color:rgba(140,100,255,.4);">smart_toy</span>
-      </div>
-    </div>
-    <div class="ml-name" id="ml-name">読み込み中...</div>
-    <div class="ml-status" id="ml-status">LOADING MODEL</div>
-    <div class="ml-spinner"></div>
-    <div class="ml-error" id="ml-error"></div>
   </div>
 
   <!-- シチュエーションパネル -->
@@ -6360,7 +6316,33 @@ window.submitGiftCode = function(){
 // ── ストレージ ──
 const MH_KEY = 'vtchat_models';
 function loadModels(){ try{ return JSON.parse(localStorage.getItem(MH_KEY))||[]; }catch(e){ return []; } }
-function saveModels(arr){ localStorage.setItem(MH_KEY, JSON.stringify(arr)); }
+function saveModels(arr){
+  try{
+    // modelFile(巨大Base64)はlocalStorageに保存しない（容量超過防止）
+    const cleaned = arr.map(m=>{
+      const copy = Object.assign({}, m);
+      if(copy.modelFile && copy.modelFile.length > 50000){
+        copy.modelFile = '__stored_externally__';
+      }
+      return copy;
+    });
+    localStorage.setItem(MH_KEY, JSON.stringify(cleaned));
+  }catch(e){
+    // QuotaExceededError対策：modelFile/sdImgを削ってリトライ
+    try{
+      const slim = arr.map(m=>{
+        const copy = Object.assign({}, m);
+        delete copy.modelFile;
+        if(copy.sdImg && copy.sdImg.length > 100000) delete copy.sdImg;
+        return copy;
+      });
+      localStorage.setItem(MH_KEY, JSON.stringify(slim));
+      showDropToast('容量制限のため画像を一部省略して保存しました');
+    }catch(e2){
+      showDropToast('保存に失敗しました（ストレージ容量不足）');
+    }
+  }
+}
 
 // デフォルトモデル（アルエ）
 function getDefaultModel(){
@@ -6453,13 +6435,14 @@ function hideModelLoading(){
 
 // モデル素材読み込みエラーハンドリング
 function showModelError(msg){
-  const errorEl = document.getElementById('ml-error');
-  if(errorEl){
-    errorEl.textContent = msg;
-    errorEl.style.display = 'block';
-  }
   const statusEl = document.getElementById('ml-status');
-  if(statusEl) statusEl.textContent = 'ERROR';
+  if(statusEl){
+    statusEl.textContent = 'ERROR';
+    statusEl.style.color = 'rgba(255,100,80,.8)';
+  }
+  const nameEl = document.getElementById('ml-name');
+  if(nameEl) nameEl.textContent = msg;
+  setTimeout(()=>hideModelLoading(), 2500);
 }
 
 // ── HUBモーダル開閉 ──
@@ -6508,7 +6491,7 @@ function renderStep(){
         <div class="upload-text">${_mhDraft.modelFileName || 'タップしてファイルを選択'}</div>
         <div class="upload-hint">.zip / .model3.json（任意）</div>
       </div>
-      <input type="file" id="mh-file-model" accept=".zip,.json,.model3.json" style="display:none" onchange="onModelFileSelect(this)">
+      <input type="file" id="mh-file-model" accept=".zip,.json,.model3.json,.txt,application/json,text/plain" style="display:none" onchange="onModelFileSelect(this)">
       ${_mhDraft.modelFile ? `
       <div class="mh-preview-card">
         <span class="material-symbols-rounded" style="font-size:28px;color:rgba(0,255,150,.6);">check_circle</span>
@@ -6668,8 +6651,16 @@ window.onModelFileSelect = function(input){
   if(!input.files[0]) return;
   const f = input.files[0];
   _mhDraft.modelFileName = f.name;
+  // モデルファイルは名前だけ保持し、内容はメモリのみ（localStorage容量節約）
   const reader = new FileReader();
-  reader.onload = ()=>{ _mhDraft.modelFile = reader.result; renderStep(); };
+  reader.onload = ()=>{
+    _mhDraft.modelFile = reader.result;
+    renderStep();
+    showDropToast(`「${f.name}」を読み込みました`);
+  };
+  reader.onerror = ()=>{
+    showDropToast('ファイルの読み込みに失敗しました');
+  };
   reader.readAsDataURL(f);
 };
 
@@ -6685,7 +6676,7 @@ window.onImgSelect = function(input, key){
   reader.readAsDataURL(f);
 };
 
-// ── モデル保存 ──
+// ── モデル保存（ローディング→チャット画面遷移） ──
 window.saveNewModel = function(){
   const models = loadModels();
   const newModel = {
@@ -6700,8 +6691,23 @@ window.saveNewModel = function(){
     isOfficial: false,
     createdAt: Date.now()
   };
+
+  // 保存前にバリデーション
+  if(!newModel.name){
+    showDropToast('キャラクター名が入力されていません');
+    return;
+  }
+
   models.push(newModel);
   saveModels(models);
+
+  // 保存が成功したか確認
+  const savedModels = loadModels();
+  const found = savedModels.find(m=>m.id === newModel.id);
+  if(!found){
+    showDropToast('モデルの保存に失敗しました。ストレージ容量を確認してください。');
+    return;
+  }
 
   // ローディングオーバーレイ表示
   showModelLoading(newModel);
@@ -6715,10 +6721,38 @@ window.saveNewModel = function(){
       await hideModelLoading();
       showDropToast(`「${newModel.name}」を登録しました！`);
     }catch(e){
-      showModelError('モデルの初期化に失敗しました: ' + (e.message||'不明なエラー'));
+      showModelError('モデルの初期化に失敗しました');
       setTimeout(()=>hideModelLoading(), 2000);
     }
   }, 2000);
+};
+
+// ── エラーモデル・壊れたモデルの削除 ──
+window.deleteModel = function(id){
+  if(id === 'arue_default') return;
+  let models = loadModels();
+  models = models.filter(m=>m.id !== id);
+  saveModels(models);
+  // アクティブモデルが削除された場合はデフォルトに戻す
+  if(_activeModelId === id){
+    switchToModel('arue_default');
+  }
+  showDropToast('モデルを削除しました');
+  if(typeof renderModelGrid === 'function') renderModelGrid();
+};
+
+// ── 壊れたモデルデータのクリーンアップ ──
+window.cleanupBrokenModels = function(){
+  let models = loadModels();
+  const before = models.length;
+  models = models.filter(m=> m && m.id && m.name && m.name.trim());
+  if(models.length < before){
+    saveModels(models);
+    showDropToast(`${before - models.length}件の不正なモデルデータを削除しました`);
+  } else {
+    showDropToast('不正なモデルデータはありませんでした');
+  }
+  return models;
 };
 
 // ── モデルブラウズ ──
@@ -6752,9 +6786,11 @@ function renderModelGrid(filter){
     const iconSrc = m.icon || 'img/arue_chibi.png';
     const isActive = (_activeModelId === m.id);
     const activeBorder = isActive ? 'border-color:rgba(0,255,150,.4);box-shadow:0 0 16px rgba(0,255,150,.1);' : '';
+    const deleteBtn = !m.isOfficial ? `<div class="mb-card-delete" onclick="event.stopPropagation();if(confirm('「${m.name}」を削除しますか？'))deleteModel('${m.id}')"><span class="material-symbols-rounded" style="font-size:14px;">delete</span></div>` : '';
     return `
       <div class="mb-card" onclick="selectModelFromBrowse('${m.id}')" style="${activeBorder}">
         ${badge}
+        ${deleteBtn}
         <div class="mb-card-icon"><img src="${iconSrc}" onerror="this.style.display='none';this.parentNode.innerHTML='🤖';"></div>
         <div class="mb-card-name">${m.name}</div>
         <div class="mb-card-creator">${m.creator}</div>
@@ -6783,14 +6819,9 @@ window.selectModelFromBrowse = function(id){
 
   // 2秒後にモデル切替＋ローディング非表示
   setTimeout(async ()=>{
-    try{
-      switchToModel(id);
-      await hideModelLoading();
-    }catch(e){
-      showModelError('モデルの切り替えに失敗しました: ' + (e.message||'不明なエラー'));
-      setTimeout(()=>hideModelLoading(), 2000);
-    }
-  }, 1800);
+    switchToModel(id);
+    await hideModelLoading();
+  }, 2000);
 };
 
 // ── モデル切替システム ──
@@ -6977,8 +7008,26 @@ window._getActiveModelForChat = getActiveModel;
 window._isCustomModelActive = function(){ return _activeModelId !== 'arue_default'; };
 window._patchedCallAI = _patchedCallAI;
 
-// 起動時にバナー復元
+// 起動時にバナー復元 & 壊れたモデルのクリーンアップ
 setTimeout(()=>{
+  // 壊れたモデルデータを自動クリーンアップ
+  try{
+    let models = loadModels();
+    const before = models.length;
+    models = models.filter(m=> m && m.id && m.name && m.name.trim());
+    if(models.length < before){
+      saveModels(models);
+    }
+    // アクティブモデルが存在しない場合はデフォルトに戻す
+    if(_activeModelId !== 'arue_default'){
+      const all = getAllModels();
+      if(!all.find(m=>m.id === _activeModelId)){
+        _activeModelId = 'arue_default';
+        localStorage.setItem(ACTIVE_MODEL_KEY, 'arue_default');
+      }
+    }
+  }catch(e){}
+
   if(_activeModelId !== 'arue_default'){
     updateModelBanner();
   }
