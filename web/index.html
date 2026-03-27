@@ -843,7 +843,9 @@ body.loading #chat-area{
 body.loading #miniroom-nav-btn{display:none!important;}
 #stamp-panel.open ~ #miniroom-nav-btn,
 body.stamp-open #miniroom-nav-btn,
-body.sidemenu-open #miniroom-nav-btn{
+body.sidemenu-open #miniroom-nav-btn,
+body.model-hub-open #miniroom-nav-btn,
+body.model-browse-open #miniroom-nav-btn{
   opacity:0!important;pointer-events:none!important;transform:translateY(20px)!important;
 }
 #mc-img-wrap{
@@ -1630,13 +1632,14 @@ body.sidemenu-open #miniroom-nav-btn{
 #shop-list::-webkit-scrollbar-thumb{background:rgba(0,200,255,.2);}
 
 .shop-item{
-  display:flex;align-items:flex-start;gap:12px;
+  display:flex;align-items:center;gap:12px;
   background:linear-gradient(135deg,rgba(8,14,30,.85),rgba(4,8,20,.95));
   border:1px solid rgba(0,200,255,.12);
-  border-radius:8px;padding:14px 14px 12px;
+  border-radius:8px;padding:12px;
   cursor:pointer;position:relative;overflow:hidden;
   transition:all .25s cubic-bezier(.22,.61,.36,1);
   backdrop-filter:blur(6px);
+  min-height:0;
 }
 .shop-item::before{
   content:'';position:absolute;top:0;left:0;right:0;height:1px;
@@ -1741,10 +1744,11 @@ body.sidemenu-open #miniroom-nav-btn{
 
 /* 価格エリア */
 .shop-item-price{
-  position:absolute;bottom:12px;right:14px;
-  font-size:13px;font-weight:800;color:#ffd050;
+  flex-shrink:0;align-self:center;
+  font-size:14px;font-weight:800;color:#ffd050;
   display:flex;flex-direction:column;align-items:flex-end;gap:4px;
   text-shadow:0 0 10px rgba(255,200,60,.3);
+  padding-left:8px;
 }
 .shop-item-price .equipped-label{
   font-size:8px;color:rgba(0,255,150,.8);font-weight:600;
@@ -2064,16 +2068,18 @@ body.sidemenu-open #miniroom-nav-btn{
   display:flex;gap:6px;align-items:center;
 }
 .mh-step-dot{
-  width:8px;height:8px;border-radius:50%;
-  background:rgba(100,60,255,.15);border:1px solid rgba(100,60,255,.2);
-  transition:all .3s;
+  width:10px;height:10px;border-radius:50%;
+  background:rgba(100,60,255,.12);border:1.5px solid rgba(100,60,255,.2);
+  transition:all .35s cubic-bezier(.22,.61,.36,1);
 }
 .mh-step-dot.active{
-  background:rgba(140,100,255,.7);border-color:rgba(140,100,255,.6);
-  box-shadow:0 0 8px rgba(140,100,255,.4);
+  background:rgba(140,100,255,.8);border-color:rgba(140,100,255,.7);
+  box-shadow:0 0 12px rgba(140,100,255,.5);
+  transform:scale(1.15);
 }
 .mh-step-dot.done{
-  background:rgba(0,255,150,.5);border-color:rgba(0,255,150,.4);
+  background:rgba(0,255,150,.6);border-color:rgba(0,255,150,.5);
+  box-shadow:0 0 8px rgba(0,255,150,.3);
 }
 
 .mh-body{
@@ -6265,6 +6271,8 @@ let _mhDraft = {
   personality:'', greeting:'',
   isOfficial:false
 };
+// グローバルに公開（inline oninput/onclickからアクセス可能に）
+window._mhDraft = _mhDraft;
 
 function resetDraft(){
   _mhStep = 1;
@@ -6275,6 +6283,7 @@ function resetDraft(){
     personality:'', greeting:'',
     isOfficial:false
   };
+  window._mhDraft = _mhDraft;
 }
 
 // ── HUBモーダル開閉 ──
@@ -6282,10 +6291,12 @@ window.openModelHub = function(){
   toggleSideMenu();
   resetDraft();
   document.getElementById('model-hub-modal').classList.add('show');
+  document.body.classList.add('model-hub-open');
   renderStep();
 };
 window.closeModelHub = function(){
   document.getElementById('model-hub-modal').classList.remove('show');
+  document.body.classList.remove('model-hub-open');
 };
 
 // ── ステップインジケータ更新 ──
@@ -6304,100 +6315,150 @@ function renderStep(){
   const body = document.getElementById('mh-body');
 
   if(_mhStep === 1){
-    // STEP1: モデルアップロード
     body.innerHTML = `
-      <div class="mh-section-title">STEP 1 ─ モデルアップロード</div>
-      <p style="font-size:10px;color:rgba(180,160,255,.4);margin-bottom:16px;line-height:1.6;">
-        Live2Dモデルファイル (.zip/.model3.json) をアップロードしてください。<br>
-        ※現在は設定のみ登録可能です（モデルファイルは任意）
-      </p>
+      <div class="mh-section-title"><span class="material-symbols-rounded" style="font-size:16px;">upload_file</span> STEP 1 ─ モデルアップロード</div>
+      <div style="background:linear-gradient(135deg,rgba(100,60,255,.05),rgba(60,30,180,.03));border:1px solid rgba(100,60,255,.1);border-radius:10px;padding:14px;margin-bottom:18px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span class="material-symbols-rounded" style="font-size:18px;color:rgba(140,100,255,.6);">info</span>
+          <span style="font-size:10px;color:rgba(180,160,255,.6);font-weight:600;letter-spacing:.5px;">ABOUT</span>
+        </div>
+        <p style="font-size:10px;color:rgba(180,160,255,.4);line-height:1.7;margin:0;">
+          Live2Dモデルファイル (.zip / .model3.json) をアップロードできます。<br>
+          モデルファイルがなくても、画像とプロンプトだけで登録可能です。
+        </p>
+      </div>
       <div class="mh-upload-zone" id="mh-upload-model" onclick="document.getElementById('mh-file-model').click()">
-        <div class="upload-icon">📦</div>
+        <span class="material-symbols-rounded" style="font-size:48px;color:rgba(140,100,255,.35);">cloud_upload</span>
         <div class="upload-text">${_mhDraft.modelFileName || 'タップしてファイルを選択'}</div>
         <div class="upload-hint">.zip / .model3.json（任意）</div>
       </div>
       <input type="file" id="mh-file-model" accept=".zip,.json,.model3.json" style="display:none" onchange="onModelFileSelect(this)">
       ${_mhDraft.modelFile ? `
       <div class="mh-preview-card">
-        <div style="font-size:28px;">📦</div>
+        <span class="material-symbols-rounded" style="font-size:28px;color:rgba(0,255,150,.6);">check_circle</span>
         <div class="mh-preview-info">
           <div class="mh-preview-name">${_mhDraft.modelFileName}</div>
-          <div class="mh-preview-meta">ファイル読み込み済み</div>
+          <div class="mh-preview-meta">ファイル読み込み完了</div>
         </div>
+        <span class="material-symbols-rounded" style="font-size:16px;color:rgba(255,100,80,.5);cursor:pointer;" onclick="window._mhDraft.modelFile=null;window._mhDraft.modelFileName='';renderStep();">close</span>
       </div>` : ''}
       <div class="mh-footer-btns">
-        <button class="mh-btn mh-btn-secondary" onclick="closeModelHub()">キャンセル</button>
-        <button class="mh-btn mh-btn-primary" onclick="mhNext()">次へ →</button>
+        <button class="mh-btn mh-btn-secondary" onclick="closeModelHub()">
+          <span class="material-symbols-rounded" style="font-size:16px;">close</span> キャンセル
+        </button>
+        <button class="mh-btn mh-btn-primary" onclick="mhNext()">
+          次へ <span class="material-symbols-rounded" style="font-size:16px;">arrow_forward</span>
+        </button>
       </div>
     `;
   } else if(_mhStep === 2){
-    // STEP2: 画像素材登録
     body.innerHTML = `
-      <div class="mh-section-title">STEP 2 ─ 画像素材登録</div>
-      <p style="font-size:10px;color:rgba(180,160,255,.4);margin-bottom:16px;line-height:1.6;">
-        アイコン画像（正方形推奨）とSDキャラ画像（背景透過PNG）を登録してください。
-      </p>
+      <div class="mh-section-title"><span class="material-symbols-rounded" style="font-size:16px;">image</span> STEP 2 ─ 画像素材登録</div>
+      <div style="background:linear-gradient(135deg,rgba(100,60,255,.05),rgba(60,30,180,.03));border:1px solid rgba(100,60,255,.1);border-radius:10px;padding:14px;margin-bottom:18px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span class="material-symbols-rounded" style="font-size:18px;color:rgba(140,100,255,.6);">photo_library</span>
+          <span style="font-size:10px;color:rgba(180,160,255,.6);font-weight:600;letter-spacing:.5px;">IMAGE ASSETS</span>
+        </div>
+        <p style="font-size:10px;color:rgba(180,160,255,.4);line-height:1.7;margin:0;">
+          アイコン画像（正方形推奨）とSDキャラ画像（背景透過PNG推奨）を登録してください。
+        </p>
+      </div>
       <div class="mh-img-pair">
         <div class="mh-img-slot ${_mhDraft.icon?'filled':''}" onclick="document.getElementById('mh-file-icon').click()">
           ${_mhDraft.icon
-            ? `<img src="${_mhDraft.icon}" alt="icon"><div class="slot-label">✓ アイコン</div>`
-            : `<div class="slot-icon">🖼️</div><div class="slot-label">正方形アイコン</div>`}
+            ? `<img src="${_mhDraft.icon}" alt="icon"><div class="slot-label"><span class="material-symbols-rounded" style="font-size:12px;vertical-align:-2px;">check</span> アイコン</div>`
+            : `<span class="material-symbols-rounded" style="font-size:32px;color:rgba(140,100,255,.3);">account_circle</span><div class="slot-label">正方形アイコン</div>`}
         </div>
         <div class="mh-img-slot ${_mhDraft.sdImg?'filled':''}" onclick="document.getElementById('mh-file-sd').click()">
           ${_mhDraft.sdImg
-            ? `<img src="${_mhDraft.sdImg}" alt="sd"><div class="slot-label">✓ SDキャラ</div>`
-            : `<div class="slot-icon">🎨</div><div class="slot-label">SDキャラ（透過PNG）</div>`}
+            ? `<img src="${_mhDraft.sdImg}" alt="sd"><div class="slot-label"><span class="material-symbols-rounded" style="font-size:12px;vertical-align:-2px;">check</span> SDキャラ</div>`
+            : `<span class="material-symbols-rounded" style="font-size:32px;color:rgba(140,100,255,.3);">emoji_people</span><div class="slot-label">SDキャラ（透過PNG）</div>`}
         </div>
       </div>
       <input type="file" id="mh-file-icon" accept="image/*" style="display:none" onchange="onImgSelect(this,'icon')">
       <input type="file" id="mh-file-sd" accept="image/png" style="display:none" onchange="onImgSelect(this,'sdImg')">
       <div class="mh-footer-btns">
-        <button class="mh-btn mh-btn-secondary" onclick="mhPrev()">← 戻る</button>
-        <button class="mh-btn mh-btn-primary" onclick="mhNext()" ${!_mhDraft.icon?'style="opacity:.5"':''}>次へ →</button>
+        <button class="mh-btn mh-btn-secondary" onclick="mhPrev()">
+          <span class="material-symbols-rounded" style="font-size:16px;">arrow_back</span> 戻る
+        </button>
+        <button class="mh-btn mh-btn-primary" onclick="mhNext()">
+          次へ <span class="material-symbols-rounded" style="font-size:16px;">arrow_forward</span>
+        </button>
       </div>
     `;
   } else if(_mhStep === 3){
-    // STEP3: 基本情報
     body.innerHTML = `
-      <div class="mh-section-title">STEP 3 ─ 基本情報登録</div>
+      <div class="mh-section-title"><span class="material-symbols-rounded" style="font-size:16px;">person</span> STEP 3 ─ 基本情報登録</div>
       <div class="mh-input-group">
-        <label>キャラクター名 *</label>
-        <input class="mh-input" id="mh-name" placeholder="例：来鳥アルエ" value="${_mhDraft.name}" oninput="_mhDraft.name=this.value">
+        <label><span class="material-symbols-rounded" style="font-size:12px;vertical-align:-2px;">badge</span> キャラクター名 <span style="color:rgba(255,80,80,.6);">*</span></label>
+        <input class="mh-input" id="mh-name" placeholder="例：来鳥アルエ" value="${_mhDraft.name}">
       </div>
       <div class="mh-input-group">
-        <label>人格設定 / キャラクタープロンプト *</label>
-        <textarea class="mh-input" id="mh-persona" placeholder="性格、話し方、趣味、口調など...&#10;例：20歳のクールなお姉さん系VTuber。普段は冷静だが、好きなものの話になると一気に饒舌になる。語尾は「〜よ」「〜かしら」" oninput="_mhDraft.personality=this.value">${_mhDraft.personality}</textarea>
+        <label><span class="material-symbols-rounded" style="font-size:12px;vertical-align:-2px;">psychology</span> 人格設定 / キャラクタープロンプト <span style="color:rgba(255,80,80,.6);">*</span></label>
+        <textarea class="mh-input" id="mh-persona" placeholder="性格、話し方、趣味、口調など...&#10;例：20歳のクールなお姉さん系VTuber。&#10;普段は冷静だが好きなものの話になると饒舌になる。&#10;語尾は「〜よ」「〜かしら」">${_mhDraft.personality}</textarea>
       </div>
       <div class="mh-input-group">
-        <label>初回あいさつメッセージ</label>
-        <input class="mh-input" id="mh-greeting" placeholder="例：初めまして！よろしくね♪" value="${_mhDraft.greeting}" oninput="_mhDraft.greeting=this.value">
+        <label><span class="material-symbols-rounded" style="font-size:12px;vertical-align:-2px;">waving_hand</span> 初回あいさつメッセージ</label>
+        <input class="mh-input" id="mh-greeting" placeholder="例：初めまして！よろしくね♪" value="${_mhDraft.greeting}">
+      </div>
+      <div style="background:rgba(255,200,60,.04);border:1px solid rgba(255,200,60,.12);border-radius:8px;padding:10px 12px;margin-top:8px;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span class="material-symbols-rounded" style="font-size:14px;color:rgba(255,200,60,.5);">tips_and_updates</span>
+          <span style="font-size:9px;color:rgba(255,200,60,.5);line-height:1.5;">人格設定が詳細なほど、よりキャラクターらしい会話が生成されます</span>
+        </div>
       </div>
       <div class="mh-footer-btns">
-        <button class="mh-btn mh-btn-secondary" onclick="mhPrev()">← 戻る</button>
-        <button class="mh-btn mh-btn-primary" onclick="mhNext()" ${!_mhDraft.name?'style="opacity:.5"':''}>次へ →</button>
+        <button class="mh-btn mh-btn-secondary" onclick="mhPrev()">
+          <span class="material-symbols-rounded" style="font-size:16px;">arrow_back</span> 戻る
+        </button>
+        <button class="mh-btn mh-btn-primary" onclick="mhNext()">
+          次へ <span class="material-symbols-rounded" style="font-size:16px;">arrow_forward</span>
+        </button>
       </div>
     `;
+    // イベントリスナーをDOMから直接バインド（クロージャ問題回避）
+    setTimeout(()=>{
+      const nameEl = document.getElementById('mh-name');
+      const personaEl = document.getElementById('mh-persona');
+      const greetEl = document.getElementById('mh-greeting');
+      if(nameEl) nameEl.addEventListener('input', e=>{ _mhDraft.name = e.target.value; });
+      if(personaEl) personaEl.addEventListener('input', e=>{ _mhDraft.personality = e.target.value; });
+      if(greetEl) greetEl.addEventListener('input', e=>{ _mhDraft.greeting = e.target.value; });
+    }, 0);
   } else if(_mhStep === 4){
-    // STEP4: 完了プレビュー
     body.innerHTML = `
-      <div class="mh-section-title">STEP 4 ─ 登録完了！</div>
+      <div class="mh-section-title"><span class="material-symbols-rounded" style="font-size:16px;">celebration</span> STEP 4 ─ 登録完了！</div>
       <div class="mh-complete-card">
+        <div style="position:absolute;top:16px;right:16px;">
+          <span class="material-symbols-rounded" style="font-size:20px;color:rgba(0,255,150,.4);">verified</span>
+        </div>
         <div class="mh-complete-icon-wrap">
-          ${_mhDraft.icon ? `<img src="${_mhDraft.icon}">` : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:40px;background:rgba(100,60,255,.1);">🤖</div>'}
+          ${_mhDraft.icon ? `<img src="${_mhDraft.icon}">` : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(100,60,255,.1);"><span class="material-symbols-rounded" style="font-size:48px;color:rgba(140,100,255,.4);">smart_toy</span></div>'}
         </div>
         <div class="mh-complete-name">${_mhDraft.name||'名前未設定'}</div>
-        <div class="mh-complete-desc">${_mhDraft.personality ? _mhDraft.personality.slice(0,60)+'...' : '人格未設定'}</div>
-        ${_mhDraft.sdImg ? `<img src="${_mhDraft.sdImg}" style="max-width:120px;max-height:150px;margin:12px auto;display:block;filter:drop-shadow(0 4px 12px rgba(100,60,255,.3));">` : ''}
+        <div class="mh-complete-desc">${_mhDraft.personality ? _mhDraft.personality.slice(0,80)+'...' : '人格未設定'}</div>
+        ${_mhDraft.sdImg ? `<img src="${_mhDraft.sdImg}" style="max-width:120px;max-height:150px;margin:16px auto;display:block;filter:drop-shadow(0 4px 16px rgba(100,60,255,.3));border-radius:8px;">` : ''}
         <button class="mh-btn mh-btn-success mh-btn-full" onclick="saveNewModel()">
-          ✨ 利用開始！
+          <span class="material-symbols-rounded" style="font-size:18px;">rocket_launch</span> 利用開始！
         </button>
-        <button class="mh-btn mh-btn-secondary mh-btn-full" onclick="mhPrev()" style="margin-top:8px;">← 修正する</button>
+        <button class="mh-btn mh-btn-secondary mh-btn-full" onclick="mhPrev()" style="margin-top:8px;">
+          <span class="material-symbols-rounded" style="font-size:16px;">edit</span> 修正する
+        </button>
       </div>
     `;
   }
 }
 
 window.mhNext = function(){
+  // STEP3ではDOMから最新値を読み取る（クロージャ問題の完全回避）
+  if(_mhStep === 3){
+    const nameEl = document.getElementById('mh-name');
+    const personaEl = document.getElementById('mh-persona');
+    const greetEl = document.getElementById('mh-greeting');
+    if(nameEl) _mhDraft.name = nameEl.value;
+    if(personaEl) _mhDraft.personality = personaEl.value;
+    if(greetEl) _mhDraft.greeting = greetEl.value;
+  }
   // バリデーション
   if(_mhStep === 2 && !_mhDraft.icon){
     showDropToast('アイコン画像を登録してください');
@@ -6414,6 +6475,15 @@ window.mhNext = function(){
   if(_mhStep < 4){ _mhStep++; renderStep(); }
 };
 window.mhPrev = function(){
+  // STEP3から戻る場合もDOMから値を保存
+  if(_mhStep === 3){
+    const nameEl = document.getElementById('mh-name');
+    const personaEl = document.getElementById('mh-persona');
+    const greetEl = document.getElementById('mh-greeting');
+    if(nameEl) _mhDraft.name = nameEl.value;
+    if(personaEl) _mhDraft.personality = personaEl.value;
+    if(greetEl) _mhDraft.greeting = greetEl.value;
+  }
   if(_mhStep > 1){ _mhStep--; renderStep(); }
 };
 
@@ -6466,11 +6536,13 @@ window.saveNewModel = function(){
 window.openModelBrowse = function(){
   toggleSideMenu();
   document.getElementById('model-browse-modal').classList.add('show');
+  document.body.classList.add('model-browse-open');
   document.getElementById('mb-search-input').value = '';
   renderModelGrid();
 };
 window.closeModelBrowse = function(){
   document.getElementById('model-browse-modal').classList.remove('show');
+  document.body.classList.remove('model-browse-open');
 };
 
 function renderModelGrid(filter){
