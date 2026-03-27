@@ -2090,6 +2090,9 @@ body.model-browse-open #miniroom-nav-btn{
   position:relative;z-index:2;
   -webkit-overflow-scrolling:touch;
 }
+.mh-body.preview-mode{
+  padding:0;overflow:hidden;
+}
 
 .mh-section-title{
   font-size:13px;letter-spacing:2px;
@@ -2469,6 +2472,7 @@ textarea.mh-input{
   transition:all .2s;
 }
 .l2d-zoom-btn:active{background:rgba(0,200,255,.15);}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </style>
 </head>
 <body class="loading">
@@ -2636,6 +2640,7 @@ textarea.mh-input{
         <div class="mh-step-dot" data-step="2"></div>
         <div class="mh-step-dot" data-step="3"></div>
         <div class="mh-step-dot" data-step="4"></div>
+        <div class="mh-step-dot" data-step="5"></div>
       </div>
     </div>
     <div class="mh-body" id="mh-body"></div>
@@ -6498,6 +6503,7 @@ let _mhDraft = {
   id:null, name:'', creator:'ユーザー',
   icon:null, iconName:'', sdImg:null, sdImgName:'',
   modelFile:null, modelFileName:'', modelMeta:null,
+  zipFile:null, zipEntries:null, zipModelPath:null,
   personality:'', greeting:'',
   isOfficial:false
 };
@@ -6510,6 +6516,7 @@ function resetDraft(){
     id:null, name:'', creator:'ユーザー',
     icon:null, iconName:'', sdImg:null, sdImgName:'',
     modelFile:null, modelFileName:'', modelMeta:null,
+    zipFile:null, zipEntries:null, zipModelPath:null,
     personality:'', greeting:'',
     isOfficial:false
   };
@@ -6622,27 +6629,65 @@ function updateStepDots(){
 function renderStep(){
   updateStepDots();
   const body = document.getElementById('mh-body');
+  // STEP5ではプレビューモードでパディング除去
+  body.classList.toggle('preview-mode', _mhStep === 5);
 
   if(_mhStep === 1){
+    // ======== STEP 1: モデルファイルアップロード（必要素材明記） ========
+    const hasModel = !!_mhDraft.modelFile;
+    const meta = _mhDraft.modelMeta;
+    const entries = _mhDraft.zipEntries;
+
     body.innerHTML = `
-      <div class="mh-section-title"><span class="material-symbols-rounded" style="font-size:16px;">upload_file</span> STEP 1 ─ モデルアップロード</div>
-      <div style="background:linear-gradient(135deg,rgba(100,60,255,.05),rgba(60,30,180,.03));border:1px solid rgba(100,60,255,.1);border-radius:10px;padding:14px;margin-bottom:18px;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-          <span class="material-symbols-rounded" style="font-size:18px;color:rgba(140,100,255,.6);">info</span>
-          <span style="font-size:10px;color:rgba(180,160,255,.6);font-weight:600;letter-spacing:.5px;">ABOUT</span>
+      <div class="mh-section-title"><span class="material-symbols-rounded" style="font-size:16px;">upload_file</span> STEP 1 — モデルアップロード</div>
+
+      <!-- 必要素材一覧 -->
+      <div style="background:linear-gradient(135deg,rgba(0,200,255,.04),rgba(60,30,180,.03));border:1px solid rgba(0,200,255,.1);border-radius:10px;padding:14px;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <span class="material-symbols-rounded" style="font-size:18px;color:rgba(0,200,255,.6);">checklist</span>
+          <span style="font-size:11px;color:rgba(0,220,255,.7);font-weight:700;letter-spacing:.5px;">必要な素材</span>
         </div>
-        <p style="font-size:12px;color:rgba(210,195,255,.7);line-height:1.8;margin:0;">
-          Live2Dモデルファイル (.zip / .model3.json) をアップロードできます。<br>
-          モデルファイルがなくても、画像とプロンプトだけで登録可能です。
-        </p>
+        <div style="font-size:11px;line-height:2.0;color:rgba(210,195,255,.7);">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="color:rgba(255,80,80,.8);font-weight:700;">必須</span>
+            <code style="background:rgba(0,200,255,.08);padding:1px 6px;border-radius:3px;color:rgba(0,220,255,.8);font-size:10px;">.model3.json</code>
+            モデル定義ファイル
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="color:rgba(255,80,80,.8);font-weight:700;">必須</span>
+            <code style="background:rgba(0,200,255,.08);padding:1px 6px;border-radius:3px;color:rgba(0,220,255,.8);font-size:10px;">.moc3</code>
+            モデルデータ
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="color:rgba(255,80,80,.8);font-weight:700;">必須</span>
+            <code style="background:rgba(0,200,255,.08);padding:1px 6px;border-radius:3px;color:rgba(255,200,60,.8);font-size:10px;">textures/</code>
+            テクスチャ画像 (.png)
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="color:rgba(0,200,255,.6);font-weight:600;">推奨</span>
+            <code style="background:rgba(0,200,255,.08);padding:1px 6px;border-radius:3px;color:rgba(0,200,255,.8);font-size:10px;">.physics3.json</code>
+            物理演算
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="color:rgba(0,200,255,.6);font-weight:600;">任意</span>
+            <code style="background:rgba(0,200,255,.08);padding:1px 6px;border-radius:3px;color:rgba(0,200,255,.8);font-size:10px;">.exp3.json</code>
+            表情ファイル
+          </div>
+        </div>
+        <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(0,200,255,.06);font-size:10px;color:rgba(160,140,210,.5);line-height:1.6;">
+          💡 上記をまとめた <strong style="color:rgba(0,220,255,.7);">.zip ファイル</strong> でアップロードしてください。<br>
+          　 モデルファイルなしでも画像＋プロンプトのみで登録できます。
+        </div>
       </div>
+
       <div class="mh-upload-zone" id="mh-upload-model" onclick="document.getElementById('mh-file-model').click()">
         <span class="material-symbols-rounded" style="font-size:48px;color:rgba(140,100,255,.35);">cloud_upload</span>
         <div class="upload-text">${_mhDraft.modelFileName || 'タップしてファイルを選択'}</div>
-        <div class="upload-hint">.zip / .model3.json（任意）</div>
+        <div class="upload-hint">.zip（推奨）/ .model3.json</div>
       </div>
       <input type="file" id="mh-file-model" accept=".zip,.json,.model3.json,.txt,application/json,text/plain" style="display:none" onchange="onModelFileSelect(this)">
-      ${_mhDraft.modelFile ? `
+
+      ${hasModel ? `
       <div class="mh-preview-card" style="flex-direction:column;gap:8px;">
         <div style="display:flex;align-items:center;gap:10px;width:100%;">
           <span class="material-symbols-rounded" style="font-size:28px;color:rgba(0,255,150,.6);">check_circle</span>
@@ -6650,19 +6695,29 @@ function renderStep(){
             <div class="mh-preview-name">${_mhDraft.modelFileName}</div>
             <div class="mh-preview-meta">ファイル読み込み完了</div>
           </div>
-          <span class="material-symbols-rounded" style="font-size:16px;color:rgba(255,100,80,.5);cursor:pointer;" onclick="window._mhDraft.modelFile=null;window._mhDraft.modelFileName='';window._mhDraft.modelMeta=null;renderStep();">close</span>
+          <span class="material-symbols-rounded" style="font-size:16px;color:rgba(255,100,80,.5);cursor:pointer;" onclick="window._mhDraft.modelFile=null;window._mhDraft.modelFileName='';window._mhDraft.modelMeta=null;window._mhDraft.zipFile=null;window._mhDraft.zipEntries=null;window._mhDraft.zipModelPath=null;renderStep();">close</span>
         </div>
-        ${_mhDraft.modelMeta ? `
+        ${meta ? `
         <div style="width:100%;background:rgba(0,200,255,.03);border:1px solid rgba(0,200,255,.08);border-radius:8px;padding:8px 10px;font-size:10px;line-height:1.8;">
           <div style="color:rgba(0,220,255,.7);font-weight:700;margin-bottom:4px;letter-spacing:.5px;">
             <span class="material-symbols-rounded" style="font-size:12px;vertical-align:-2px;">data_object</span> MODEL INFO
           </div>
-          <div style="color:rgba(200,220,255,.5);">Version: <span style="color:rgba(0,255,180,.7);">${_mhDraft.modelMeta.version}</span></div>
-          <div style="color:rgba(200,220,255,.5);">Moc: <span style="color:rgba(180,160,255,.7);">${_mhDraft.modelMeta.moc}</span></div>
-          ${_mhDraft.modelMeta.textures.length ? `<div style="color:rgba(200,220,255,.5);">Textures: <span style="color:rgba(255,200,60,.7);">${_mhDraft.modelMeta.textures.length}枚</span></div>` : ''}
-          ${_mhDraft.modelMeta.physics ? `<div style="color:rgba(200,220,255,.5);">Physics: <span style="color:rgba(0,200,255,.7);">✓</span></div>` : ''}
+          <div style="color:rgba(200,220,255,.5);">Version: <span style="color:rgba(0,255,180,.7);">${meta.version}</span></div>
+          <div style="color:rgba(200,220,255,.5);">Moc: <span style="${meta.hasMoc?'color:rgba(0,255,150,.7);':'color:rgba(255,80,80,.6);'}">${meta.moc} ${meta.hasMoc?'✓':'✗ 未検出'}</span></div>
+          <div style="color:rgba(200,220,255,.5);">Textures: <span style="${meta.hasTextures?'color:rgba(255,200,60,.7);':'color:rgba(255,80,80,.6);'}">${meta.textures.length}枚 ${meta.hasTextures?'✓':'✗ 未検出'}</span></div>
+          ${meta.physics ? `<div style="color:rgba(200,220,255,.5);">Physics: <span style="color:rgba(0,200,255,.7);">✓</span></div>` : ''}
+          ${meta.expressions && meta.expressions.length ? `<div style="color:rgba(200,220,255,.5);">Expressions: <span style="color:rgba(180,160,255,.7);">${meta.expressions.length}種</span></div>` : ''}
+        </div>` : ''}
+        ${entries ? `
+        <div style="width:100%;background:rgba(100,60,255,.03);border:1px solid rgba(100,60,255,.08);border-radius:8px;padding:8px 10px;font-size:9px;max-height:100px;overflow-y:auto;">
+          <div style="color:rgba(180,160,255,.6);font-weight:700;margin-bottom:4px;letter-spacing:.5px;">
+            <span class="material-symbols-rounded" style="font-size:12px;vertical-align:-2px;">folder_zip</span> ZIP CONTENTS (${entries.length}件)
+          </div>
+          ${entries.slice(0,15).map(e=>`<div style="color:rgba(200,220,255,.4);padding:1px 0;">${e.name} <span style="color:rgba(100,80,200,.4);">${(e.size/1024).toFixed(0)}KB</span></div>`).join('')}
+          ${entries.length>15?`<div style="color:rgba(100,80,200,.4);margin-top:4px;">... 他${entries.length-15}件</div>`:''}
         </div>` : ''}
       </div>` : ''}
+
       <div class="mh-footer-btns">
         <button class="mh-btn mh-btn-secondary" onclick="closeModelHub()">
           <span class="material-symbols-rounded" style="font-size:16px;">close</span> キャンセル
@@ -6673,8 +6728,9 @@ function renderStep(){
       </div>
     `;
   } else if(_mhStep === 2){
+    // ======== STEP 2: 画像素材 ========
     body.innerHTML = `
-      <div class="mh-section-title"><span class="material-symbols-rounded" style="font-size:16px;">image</span> STEP 2 ─ 画像素材登録</div>
+      <div class="mh-section-title"><span class="material-symbols-rounded" style="font-size:16px;">image</span> STEP 2 — 画像素材登録</div>
       <div style="background:linear-gradient(135deg,rgba(100,60,255,.05),rgba(60,30,180,.03));border:1px solid rgba(100,60,255,.1);border-radius:10px;padding:14px;margin-bottom:18px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
           <span class="material-symbols-rounded" style="font-size:18px;color:rgba(140,100,255,.6);">photo_library</span>
@@ -6708,8 +6764,9 @@ function renderStep(){
       </div>
     `;
   } else if(_mhStep === 3){
+    // ======== STEP 3: 基本情報 ========
     body.innerHTML = `
-      <div class="mh-section-title"><span class="material-symbols-rounded" style="font-size:16px;">person</span> STEP 3 ─ 基本情報登録</div>
+      <div class="mh-section-title"><span class="material-symbols-rounded" style="font-size:16px;">person</span> STEP 3 — 基本情報登録</div>
       <div class="mh-input-group">
         <label><span class="material-symbols-rounded" style="font-size:12px;vertical-align:-2px;">badge</span> キャラクター名 <span style="color:rgba(255,80,80,.6);">*</span></label>
         <input class="mh-input" id="mh-name" placeholder="例：来鳥アルエ" value="${_mhDraft.name}">
@@ -6737,7 +6794,6 @@ function renderStep(){
         </button>
       </div>
     `;
-    // イベントリスナーをDOMから直接バインド（クロージャ問題回避）
     setTimeout(()=>{
       const nameEl = document.getElementById('mh-name');
       const personaEl = document.getElementById('mh-persona');
@@ -6747,28 +6803,115 @@ function renderStep(){
       if(greetEl) greetEl.addEventListener('input', e=>{ _mhDraft.greeting = e.target.value; });
     }, 0);
   } else if(_mhStep === 4){
+    // ======== STEP 4: 確認サマリー ========
+    const hasLive2D = _mhDraft.modelMeta && _mhDraft.modelMeta.hasMoc && _mhDraft.modelMeta.hasTextures;
     body.innerHTML = `
-      <div class="mh-section-title"><span class="material-symbols-rounded" style="font-size:16px;">celebration</span> STEP 4 ─ 登録完了！</div>
+      <div class="mh-section-title"><span class="material-symbols-rounded" style="font-size:16px;">fact_check</span> STEP 4 — 登録内容の確認</div>
       <div class="mh-complete-card">
         <div style="position:absolute;top:16px;right:16px;">
-          <span class="material-symbols-rounded" style="font-size:20px;color:rgba(0,255,150,.4);">verified</span>
+          <span class="material-symbols-rounded" style="font-size:20px;color:rgba(0,200,255,.4);">preview</span>
         </div>
         <div class="mh-complete-icon-wrap">
           ${_mhDraft.icon ? `<img src="${_mhDraft.icon}">` : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(100,60,255,.1);"><span class="material-symbols-rounded" style="font-size:48px;color:rgba(140,100,255,.4);">smart_toy</span></div>'}
         </div>
         <div class="mh-complete-name">${_mhDraft.name||'名前未設定'}</div>
         <div class="mh-complete-desc">${_mhDraft.personality ? _mhDraft.personality.slice(0,80)+'...' : '人格未設定'}</div>
-        ${_mhDraft.sdImg ? `<img src="${_mhDraft.sdImg}" style="max-width:120px;max-height:150px;margin:16px auto;display:block;filter:drop-shadow(0 4px 16px rgba(100,60,255,.3));border-radius:8px;">` : ''}
-        <button class="mh-btn mh-btn-success mh-btn-full" onclick="saveNewModel()">
-          <span class="material-symbols-rounded" style="font-size:18px;">rocket_launch</span> 利用開始！
+
+        <div style="width:100%;margin-top:16px;display:flex;flex-direction:column;gap:6px;">
+          <div style="display:flex;align-items:center;gap:8px;font-size:11px;">
+            <span class="material-symbols-rounded" style="font-size:14px;color:${hasLive2D?'rgba(0,255,150,.7)':'rgba(255,200,60,.6)'};">${hasLive2D?'check_circle':'info'}</span>
+            <span style="color:rgba(200,220,255,.6);">Live2D: ${hasLive2D?'<span style="color:rgba(0,255,150,.7);">プレビュー可能</span>':'<span style="color:rgba(255,200,60,.7);">モデルなし（画像モード）</span>'}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:11px;">
+            <span class="material-symbols-rounded" style="font-size:14px;color:rgba(0,200,255,.5);">chat</span>
+            <span style="color:rgba(200,220,255,.6);">あいさつ: ${_mhDraft.greeting||'デフォルト'}</span>
+          </div>
+        </div>
+
+        ${hasLive2D ? `
+        <button class="mh-btn mh-btn-primary mh-btn-full" onclick="mhNext()" style="margin-top:16px;">
+          <span class="material-symbols-rounded" style="font-size:18px;">visibility</span> Live2D プレビューへ
         </button>
+        ` : `
+        <button class="mh-btn mh-btn-success mh-btn-full" onclick="saveNewModel()" style="margin-top:16px;">
+          <span class="material-symbols-rounded" style="font-size:18px;">rocket_launch</span> 登録完了！
+        </button>
+        `}
         <button class="mh-btn mh-btn-secondary mh-btn-full" onclick="mhPrev()" style="margin-top:8px;">
           <span class="material-symbols-rounded" style="font-size:16px;">edit</span> 修正する
         </button>
       </div>
     `;
+  } else if(_mhStep === 5){
+    // ======== STEP 5: Live2D プレビュー ========
+    const meta = _mhDraft.modelMeta;
+    const expressions = (meta && meta.expressions) ? meta.expressions : [];
+
+    body.innerHTML = `
+      <div style="display:flex;flex-direction:column;height:100%;position:relative;">
+        <!-- プレビューヘッダー -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;flex-shrink:0;background:rgba(0,0,0,.2);border-bottom:1px solid rgba(0,200,255,.08);">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="material-symbols-rounded" style="font-size:18px;color:rgba(0,200,255,.5);">view_in_ar</span>
+            <span style="font-size:12px;color:rgba(0,220,255,.7);font-weight:700;">${_mhDraft.name||'Model'} — Live2D Preview</span>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button class="mh-btn" style="padding:4px 8px;font-size:10px;" onclick="sendMhPreviewCmd('l2d-zoom',{factor:1.15})">+</button>
+            <button class="mh-btn" style="padding:4px 8px;font-size:10px;" onclick="sendMhPreviewCmd('l2d-zoom',{factor:0.87})">-</button>
+            <button class="mh-btn" style="padding:4px 8px;font-size:10px;" onclick="sendMhPreviewCmd('l2d-reset',{})">R</button>
+          </div>
+        </div>
+
+        <!-- iframeプレビュー -->
+        <div style="flex:1;position:relative;overflow:hidden;background:radial-gradient(ellipse at 50% 80%, rgba(60,20,120,.1) 0%, transparent 70%);" id="mh-preview-area">
+          <iframe id="mh-preview-iframe"
+            src="live2d/live2d_preview.html"
+            style="width:100%;height:100%;border:none;position:absolute;inset:0;"
+            allow="autoplay"></iframe>
+        </div>
+
+        <!-- 表情ボタン -->
+        ${expressions.length ? `
+        <div style="display:flex;flex-wrap:wrap;gap:4px;padding:6px 10px;background:rgba(0,0,0,.3);border-top:1px solid rgba(0,200,255,.06);max-height:64px;overflow-y:auto;flex-shrink:0;">
+          ${expressions.slice(0,15).map(e=>`<button class="l2d-ctrl-btn" onclick="sendMhPreviewCmd('l2d-expression',{name:'${e}'})">${e}</button>`).join('')}
+          <button class="l2d-ctrl-btn" onclick="sendMhPreviewCmd('l2d-expression',{name:null})">Reset</button>
+        </div>` : ''}
+
+        <!-- アクションボタン -->
+        <div style="display:flex;gap:8px;padding:10px 12px;background:rgba(0,0,0,.4);border-top:1px solid rgba(0,200,255,.1);flex-shrink:0;">
+          <button class="mh-btn mh-btn-secondary" onclick="mhPrev()" style="flex:1;">
+            <span class="material-symbols-rounded" style="font-size:16px;">arrow_back</span> 戻る
+          </button>
+          <button class="mh-btn mh-btn-success" onclick="saveNewModel()" style="flex:2;">
+            <span class="material-symbols-rounded" style="font-size:18px;">rocket_launch</span> 登録完了！
+          </button>
+        </div>
+      </div>
+    `;
+
+    // iframeが読み込まれたらpostMessageでモデルパス(blob URL)を送信
+    const iframe = document.getElementById('mh-preview-iframe');
+    if(iframe && _mhDraft.zipModelPath){
+      iframe.addEventListener('load', ()=>{
+        setTimeout(()=>{
+          iframe.contentWindow.postMessage({
+            type: 'l2d-load',
+            modelPath: _mhDraft.zipModelPath,
+            name: _mhDraft.name || 'Model'
+          }, '*');
+        }, 300);
+      });
+    }
   }
 }
+
+// プレビューiframeにコマンドを送信
+window.sendMhPreviewCmd = function(type, data){
+  const iframe = document.getElementById('mh-preview-iframe');
+  if(iframe && iframe.contentWindow){
+    iframe.contentWindow.postMessage({ type, ...data }, '*');
+  }
+};
 
 window.mhNext = function(){
   // STEP3ではDOMから最新値を読み取る（クロージャ問題の完全回避）
@@ -6793,7 +6936,15 @@ window.mhNext = function(){
     showDropToast('人格設定を入力してください');
     return;
   }
-  if(_mhStep < 4){ _mhStep++; renderStep(); }
+  // STEP4→STEP5 は Live2Dモデルがある場合のみ
+  if(_mhStep === 4){
+    const hasLive2D = _mhDraft.modelMeta && _mhDraft.modelMeta.hasMoc && _mhDraft.modelMeta.hasTextures;
+    if(!hasLive2D){
+      // Live2Dなし → STEP4で直接保存（saveNewModelが呼ばれる）
+      return;
+    }
+  }
+  if(_mhStep < 5){ _mhStep++; renderStep(); }
 };
 window.mhPrev = function(){
   // STEP3から戻る場合もDOMから値を保存
@@ -6805,16 +6956,133 @@ window.mhPrev = function(){
     if(personaEl) _mhDraft.personality = personaEl.value;
     if(greetEl) _mhDraft.greeting = greetEl.value;
   }
+  // STEP5のiframeを破棄
+  if(_mhStep === 5){
+    const iframe = document.getElementById('mh-preview-iframe');
+    if(iframe) iframe.remove();
+  }
   if(_mhStep > 1){ _mhStep--; renderStep(); }
 };
 
 // ── ファイル選択ハンドラ ──
-window.onModelFileSelect = function(input){
+window.onModelFileSelect = async function(input){
   if(!input.files[0]) return;
   const f = input.files[0];
   _mhDraft.modelFileName = f.name;
 
-  // model3.json / .json / .txt → テキストとして読み込んでJSONパース試行
+  if(f.name.endsWith('.zip')){
+    // ── ZIP ファイル処理 ──
+    showDropToast('ZIP を解析中...');
+    try {
+      const zip = await JSZip.loadAsync(f);
+      const entries = [];
+      let model3File = null;
+      let model3Path = '';
+      let basePath = '';
+
+      // ZIP内のファイル一覧を収集
+      zip.forEach((relativePath, zipEntry) => {
+        if(zipEntry.dir) return;
+        // __MACOSX や .DS_Store を除外
+        if(relativePath.startsWith('__MACOSX') || relativePath.endsWith('.DS_Store')) return;
+        entries.push({ name: relativePath, size: zipEntry._data ? zipEntry._data.uncompressedSize : 0 });
+        // model3.json を探す
+        if(relativePath.endsWith('.model3.json')){
+          model3File = zipEntry;
+          model3Path = relativePath;
+          // ベースパスを計算（model3.jsonのディレクトリ）
+          const idx = relativePath.lastIndexOf('/');
+          basePath = idx >= 0 ? relativePath.substring(0, idx + 1) : '';
+        }
+      });
+
+      _mhDraft.zipEntries = entries;
+      _mhDraft.zipFile = zip;
+
+      if(model3File){
+        // model3.json をパースしてメタ情報取得
+        const model3Text = await model3File.async('text');
+        const model3Json = JSON.parse(model3Text);
+        const refs = model3Json.FileReferences || {};
+
+        // ZIP内の素材存在チェック
+        const mocPath = basePath + (refs.Moc || '');
+        const hasMoc = !!zip.file(mocPath);
+        const textures = refs.Textures || [];
+        const hasTextures = textures.length > 0 && textures.every(t => !!zip.file(basePath + t));
+        const expressions = (refs.Expressions || []).map(e => e.Name || e.name || '').filter(Boolean);
+
+        _mhDraft.modelFile = model3Text;
+        _mhDraft.modelMeta = {
+          version: model3Json.Version || '不明',
+          moc: refs.Moc || '不明',
+          textures: textures,
+          physics: refs.Physics || null,
+          displayInfo: refs.DisplayInfo || null,
+          hasMoc: hasMoc,
+          hasTextures: hasTextures,
+          expressions: expressions,
+          basePath: basePath
+        };
+
+        // ZIP内の全素材をBlob URLに展開（Live2Dプレビュー用）
+        const blobUrls = {};
+        const filePromises = [];
+        zip.forEach((relativePath, zipEntry) => {
+          if(zipEntry.dir || relativePath.startsWith('__MACOSX') || relativePath.endsWith('.DS_Store')) return;
+          // model3.jsonからの相対パスで保存
+          const relToModel = basePath ? relativePath.replace(basePath, '') : relativePath;
+          filePromises.push(
+            zipEntry.async('blob').then(blob => {
+              // 拡張子からMIMEタイプを推定
+              let mime = 'application/octet-stream';
+              if(relativePath.endsWith('.png')) mime = 'image/png';
+              else if(relativePath.endsWith('.jpg') || relativePath.endsWith('.jpeg')) mime = 'image/jpeg';
+              else if(relativePath.endsWith('.json')) mime = 'application/json';
+              blobUrls[relToModel] = URL.createObjectURL(new Blob([blob], { type: mime }));
+            })
+          );
+        });
+        await Promise.all(filePromises);
+
+        // model3.jsonを書き換えてBlob URLを参照するよう変更
+        const rewrittenModel3 = JSON.parse(JSON.stringify(model3Json));
+        if(rewrittenModel3.FileReferences){
+          const fr = rewrittenModel3.FileReferences;
+          if(fr.Moc && blobUrls[fr.Moc]) fr.Moc = blobUrls[fr.Moc];
+          if(fr.Textures) fr.Textures = fr.Textures.map(t => blobUrls[t] || t);
+          if(fr.Physics && blobUrls[fr.Physics]) fr.Physics = blobUrls[fr.Physics];
+          if(fr.DisplayInfo && blobUrls[fr.DisplayInfo]) fr.DisplayInfo = blobUrls[fr.DisplayInfo];
+          if(fr.Expressions) fr.Expressions = fr.Expressions.map(e => ({
+            ...e,
+            File: blobUrls[e.File] || e.File
+          }));
+        }
+        // rewritten model3.json自体もBlob URL化
+        const model3Blob = new Blob([JSON.stringify(rewrittenModel3)], { type: 'application/json' });
+        _mhDraft.zipModelPath = URL.createObjectURL(model3Blob);
+        _mhDraft._blobUrls = blobUrls; // cleanup用
+
+        renderStep();
+        showDropToast(`ZIP解析完了: ${entries.length}ファイル, ${hasMoc?'moc3 ✓':'moc3 ✗'}, ${hasTextures?'textures ✓':'textures ✗'}`);
+      } else {
+        _mhDraft.modelFile = '__zip_no_model3__';
+        _mhDraft.modelMeta = null;
+        _mhDraft.zipModelPath = null;
+        renderStep();
+        showDropToast('ZIP内に .model3.json が見つかりませんでした');
+      }
+    } catch(e) {
+      console.error('ZIP parse error:', e);
+      _mhDraft.modelFile = '__zip_error__';
+      _mhDraft.modelMeta = null;
+      renderStep();
+      showDropToast('ZIPの解析に失敗しました: ' + e.message);
+    }
+    return;
+  }
+
+  // ── JSON / model3.json / .txt 処理 ──
   const isJsonLike = f.name.endsWith('.json') || f.name.endsWith('.txt') || f.name.endsWith('.model3.json');
 
   if(isJsonLike){
@@ -6822,7 +7090,6 @@ window.onModelFileSelect = function(input){
     textReader.onload = ()=>{
       try{
         const json = JSON.parse(textReader.result);
-        // model3.json のメタデータを保存（軽量）
         _mhDraft.modelFile = JSON.stringify({
           _type: 'model3json',
           Version: json.Version || 3,
@@ -6830,17 +7097,20 @@ window.onModelFileSelect = function(input){
           Groups: json.Groups || [],
           fileName: f.name
         });
+        const refs = json.FileReferences || {};
         _mhDraft.modelMeta = {
           version: json.Version || '不明',
-          moc: json.FileReferences?.Moc || '不明',
-          textures: json.FileReferences?.Textures || [],
-          physics: json.FileReferences?.Physics || null,
-          displayInfo: json.FileReferences?.DisplayInfo || null
+          moc: refs.Moc || '不明',
+          textures: refs.Textures || [],
+          physics: refs.Physics || null,
+          displayInfo: refs.DisplayInfo || null,
+          hasMoc: false, // JSONのみではmoc3未検証
+          hasTextures: false,
+          expressions: (refs.Expressions||[]).map(e=>e.Name||'').filter(Boolean)
         };
         renderStep();
         showDropToast(`「${f.name}」を解析しました（Live2D Model v${json.Version || '?'}）`);
       }catch(e){
-        // JSONパース失敗 → そのままテキスト保存（小さければ）
         if(textReader.result.length < 50000){
           _mhDraft.modelFile = textReader.result;
         } else {
@@ -6856,7 +7126,6 @@ window.onModelFileSelect = function(input){
     };
     textReader.readAsText(f);
   } else {
-    // .zip等のバイナリ → ファイル名のみ保持
     _mhDraft.modelFile = '__binary_model__';
     _mhDraft.modelMeta = null;
     renderStep();
@@ -6888,6 +7157,7 @@ window.saveNewModel = function(){
     modelFile: _mhDraft.modelFile,
     modelFileName: _mhDraft.modelFileName || '',
     modelMeta: _mhDraft.modelMeta || null,
+    hasLive2D: !!(_mhDraft.modelMeta && _mhDraft.modelMeta.hasMoc && _mhDraft.modelMeta.hasTextures),
     personality: _mhDraft.personality.trim(),
     greeting: _mhDraft.greeting.trim() || 'はじめまして！よろしくね！',
     isOfficial: false,
@@ -6900,6 +7170,16 @@ window.saveNewModel = function(){
     return;
   }
 
+  // Blob URLをクリーンアップ（メモリ解放）
+  if(_mhDraft._blobUrls){
+    Object.values(_mhDraft._blobUrls).forEach(url => {
+      try{ URL.revokeObjectURL(url); }catch(e){}
+    });
+  }
+  if(_mhDraft.zipModelPath){
+    try{ URL.revokeObjectURL(_mhDraft.zipModelPath); }catch(e){}
+  }
+
   models.push(newModel);
   saveModels(models);
 
@@ -6910,6 +7190,10 @@ window.saveNewModel = function(){
     showDropToast('モデルの保存に失敗しました。ストレージ容量を確認してください。');
     return;
   }
+
+  // STEP5のiframeを破棄
+  const previewIframe = document.getElementById('mh-preview-iframe');
+  if(previewIframe) previewIframe.remove();
 
   // ローディングオーバーレイ表示
   showModelLoading(newModel);
