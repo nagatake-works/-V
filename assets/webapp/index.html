@@ -2472,8 +2472,8 @@ textarea.mh-input{
   transition:all .2s;
 }
 .l2d-zoom-btn:active{background:rgba(0,200,255,.15);}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body class="loading">
 
@@ -6685,7 +6685,7 @@ function renderStep(){
         <div class="upload-text">${_mhDraft.modelFileName || 'タップしてファイルを選択'}</div>
         <div class="upload-hint">.zip（推奨）/ .model3.json</div>
       </div>
-      <input type="file" id="mh-file-model" accept=".zip,.json,.model3.json,.txt,application/json,text/plain" style="display:none" onchange="onModelFileSelect(this)">
+      <input type="file" id="mh-file-model" accept=".zip,.json,.model3.json,.txt,application/zip,application/x-zip-compressed,application/json,text/plain" style="display:none" onchange="onModelFileSelect(this)">
 
       ${hasModel ? `
       <div class="mh-preview-card" style="flex-direction:column;gap:8px;">
@@ -6972,6 +6972,13 @@ window.onModelFileSelect = async function(input){
 
   if(f.name.endsWith('.zip')){
     // ── ZIP ファイル処理 ──
+    if(typeof JSZip === 'undefined'){
+      showDropToast('ZIP解析ライブラリの読み込みに失敗しました。ページを再読み込みしてください。');
+      _mhDraft.modelFile = '__zip_no_jszip__';
+      _mhDraft.modelMeta = null;
+      renderStep();
+      return;
+    }
     showDropToast('ZIP を解析中...');
     try {
       const zip = await JSZip.loadAsync(f);
