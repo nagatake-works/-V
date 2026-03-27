@@ -2644,6 +2644,10 @@ textarea.mh-input{
       </div>
     </div>
     <div class="mh-body" id="mh-body"></div>
+    <!-- 静的ファイル入力（innerHTML再描画で消えない） -->
+    <input type="file" id="mh-file-model-static" accept=".zip,.json,.model3.json,.txt,application/zip,application/x-zip-compressed,application/json,text/plain" style="position:absolute;top:-9999px;left:-9999px;opacity:0;">
+    <input type="file" id="mh-file-icon-static" accept="image/*" style="position:absolute;top:-9999px;left:-9999px;opacity:0;">
+    <input type="file" id="mh-file-sd-static" accept="image/png,image/*" style="position:absolute;top:-9999px;left:-9999px;opacity:0;">
   </div>
 
   <!-- モデルブラウズモーダル -->
@@ -6608,6 +6612,15 @@ window.openModelHub = function(){
   resetDraft();
   document.getElementById('model-hub-modal').classList.add('show');
   document.body.classList.add('model-hub-open');
+
+  // 静的ファイル入力のイベントリスナーをバインド（毎回リセット）
+  const modelInput = document.getElementById('mh-file-model-static');
+  const iconInput = document.getElementById('mh-file-icon-static');
+  const sdInput = document.getElementById('mh-file-sd-static');
+  if(modelInput){ modelInput.value = ''; modelInput.onchange = function(){ onModelFileSelect(this); }; }
+  if(iconInput){ iconInput.value = ''; iconInput.onchange = function(){ onImgSelect(this, 'icon'); }; }
+  if(sdInput){ sdInput.value = ''; sdInput.onchange = function(){ onImgSelect(this, 'sdImg'); }; }
+
   renderStep();
 };
 window.closeModelHub = function(){
@@ -6680,12 +6693,12 @@ function renderStep(){
         </div>
       </div>
 
-      <div class="mh-upload-zone" id="mh-upload-model" onclick="document.getElementById('mh-file-model').click()">
+      <div class="mh-upload-zone" id="mh-upload-model" onclick="document.getElementById('mh-file-model-static').click()">
         <span class="material-symbols-rounded" style="font-size:48px;color:rgba(140,100,255,.35);">cloud_upload</span>
         <div class="upload-text">${_mhDraft.modelFileName || 'タップしてファイルを選択'}</div>
         <div class="upload-hint">.zip（推奨）/ .model3.json</div>
       </div>
-      <input type="file" id="mh-file-model" accept=".zip,.json,.model3.json,.txt,application/zip,application/x-zip-compressed,application/json,text/plain" style="display:none" onchange="onModelFileSelect(this)">
+
 
       ${hasModel ? `
       <div class="mh-preview-card" style="flex-direction:column;gap:8px;">
@@ -6741,19 +6754,18 @@ function renderStep(){
         </p>
       </div>
       <div class="mh-img-pair">
-        <div class="mh-img-slot ${_mhDraft.icon?'filled':''}" onclick="document.getElementById('mh-file-icon').click()">
+        <div class="mh-img-slot ${_mhDraft.icon?'filled':''}" onclick="document.getElementById('mh-file-icon-static').click()">
           ${_mhDraft.icon
             ? `<img src="${_mhDraft.icon}" alt="icon"><div class="slot-label"><span class="material-symbols-rounded" style="font-size:12px;vertical-align:-2px;">check</span> アイコン</div>`
             : `<span class="material-symbols-rounded" style="font-size:32px;color:rgba(140,100,255,.3);">account_circle</span><div class="slot-label">正方形アイコン</div>`}
         </div>
-        <div class="mh-img-slot ${_mhDraft.sdImg?'filled':''}" onclick="document.getElementById('mh-file-sd').click()">
+        <div class="mh-img-slot ${_mhDraft.sdImg?'filled':''}" onclick="document.getElementById('mh-file-sd-static').click()">
           ${_mhDraft.sdImg
             ? `<img src="${_mhDraft.sdImg}" alt="sd"><div class="slot-label"><span class="material-symbols-rounded" style="font-size:12px;vertical-align:-2px;">check</span> SDキャラ</div>`
             : `<span class="material-symbols-rounded" style="font-size:32px;color:rgba(140,100,255,.3);">emoji_people</span><div class="slot-label">SDキャラ（透過PNG）</div>`}
         </div>
       </div>
-      <input type="file" id="mh-file-icon" accept="image/*" style="display:none" onchange="onImgSelect(this,'icon')">
-      <input type="file" id="mh-file-sd" accept="image/png" style="display:none" onchange="onImgSelect(this,'sdImg')">
+
       <div class="mh-footer-btns">
         <button class="mh-btn mh-btn-secondary" onclick="mhPrev()">
           <span class="material-symbols-rounded" style="font-size:16px;">arrow_back</span> 戻る
@@ -6966,11 +6978,30 @@ window.mhPrev = function(){
 
 // ── ファイル選択ハンドラ ──
 window.onModelFileSelect = async function(input){
-  if(!input.files[0]) return;
-  const f = input.files[0];
-  _mhDraft.modelFileName = f.name;
+  try {
+    if(!input.files || !input.files[0]){
+      showDropToast('ファイルが選択されませんでした');
+      return;
+    }
+    const f = input.files[0];
+    showDropToast(`読み込み中: ${f.name} (${(f.size/1024/1024).toFixed(1)}MB)`);
+    _mhDraft.modelFileName = f.name;
 
-  if(f.name.endsWith('.zip')){
+    // ZIPの判定を拡張子だけでなくMIMEタイプでも行う
+    const isZip = f.name.toLowerCase().endsWith('.zip')
+      || f.type === 'application/zip'
+      || f.type === 'application/x-zip-compressed'
+      || f.type === 'application/x-zip';
+
+    if(isZip){
+      // ── ZIP ファイル処理 ──
+      if(typeof JSZip === 'undefined'){
+        showDropToast('ZIP解析ライブラリの読み込みに失敗しました。ページを再読み込みしてください。');
+        _mhDraft.modelFile = '__zip_no_jszip__';
+        _mhDraft.modelMeta = null;
+        renderStep();
+        return;
+      }
     // ── ZIP ファイル処理 ──
     if(typeof JSZip === 'undefined'){
       showDropToast('ZIP解析ライブラリの読み込みに失敗しました。ページを再読み込みしてください。');
@@ -7137,6 +7168,10 @@ window.onModelFileSelect = async function(input){
     _mhDraft.modelMeta = null;
     renderStep();
     showDropToast(`「${f.name}」を登録しました`);
+  }
+  } catch(outerErr) {
+    console.error('onModelFileSelect error:', outerErr);
+    showDropToast('ファイル処理中にエラーが発生しました: ' + outerErr.message);
   }
 };
 
