@@ -52,3 +52,4 @@ web/env.txt
 assets/webapp/env.txt
 .env
 *.env
+web/live2d/model_elfin/elfin.8192/

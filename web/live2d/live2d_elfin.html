@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Elfin - Live2D Preview</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;overflow:hidden;background:transparent;}
+#app{width:100%;height:100%;position:relative;}
+canvas{display:block;width:100%!important;height:100%!important;}
+#status{
+  position:absolute;top:12px;left:50%;transform:translateX(-50%);
+  color:rgba(0,220,255,.7);font-family:'SF Mono',monospace;font-size:10px;
+  background:rgba(0,0,20,.6);padding:4px 14px;border-radius:20px;
+  border:1px solid rgba(0,200,255,.15);letter-spacing:.5px;
+  pointer-events:none;z-index:10;transition:opacity .5s;
+}
+#expression-badge{
+  position:absolute;bottom:12px;right:12px;
+  color:rgba(0,220,255,.6);font-family:'SF Mono',monospace;font-size:9px;
+  background:rgba(0,0,20,.5);padding:3px 10px;border-radius:12px;
+  border:1px solid rgba(0,200,255,.1);pointer-events:none;z-index:10;
+  opacity:0;transition:opacity .3s;
+}
+#expression-badge.show{opacity:1;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="status">LOADING ELFIN...</div>
+  <div id="expression-badge"></div>
+</div>
+
+<script src="sdk/live2dcubismcore.min.js"></script>
+<script src="sdk/pixi.min.js"></script>
+<script src="sdk/cubism4.min.js"></script>
+<script>
+const MODEL_URL = 'model_elfin/elfin.model3.json';
+let app = null;
+let model = null;
+let currentScale = 1.0;
+let dragState = { active:false, lastX:0, lastY:0 };
+
+const statusEl = document.getElementById('status');
+const badgeEl = document.getElementById('expression-badge');
+
+function updateStatus(msg) {
+  if(statusEl) statusEl.textContent = msg;
+}
+
+async function init() {
+  const container = document.getElementById('app');
+  const W = container.clientWidth || window.innerWidth;
+  const H = container.clientHeight || window.innerHeight;
+
+  updateStatus('INITIALIZING...');
+
+  try {
+    if(!window.PIXI || !PIXI.live2d) throw new Error('Live2D SDK not loaded');
+
+    app = new PIXI.Application({
+      width: W, height: H,
+      backgroundAlpha: 0,
+      antialias: true,
+      autoDensity: true,
+      resolution: Math.min(window.devicePixelRatio || 1, 1.5),
+      powerPreference: 'high-performance',
+    });
+    container.insertBefore(app.view, statusEl);
+
+    updateStatus('LOADING MODEL...');
+
+    model = await PIXI.live2d.Live2DModel.from(MODEL_URL, {
+      onError: (e) => console.error('Model load error:', e)
+    });
+
+    app.stage.addChild(model);
+    placeModel();
+    app.ticker.maxFPS = 30;
+
+    updateStatus('ELFIN READY');
+    setTimeout(() => { statusEl.style.opacity = '0'; }, 2000);
+
+    // Resize handling
+    new ResizeObserver(() => {
+      if(!app) return;
+      const nw = container.clientWidth, nh = container.clientHeight;
+      if(nw > 0 && nh > 0) {
+        app.renderer.resize(nw, nh);
+        placeModel();
+      }
+    }).observe(container);
+
+    // Drag
+    app.view.addEventListener('pointerdown', (e) => {
+      dragState.active = true;
+      dragState.lastX = e.clientX;
+      dragState.lastY = e.clientY;
+    });
+    window.addEventListener('pointermove', (e) => {
+      if(!dragState.active || !model) return;
+      model.x += e.clientX - dragState.lastX;
+      model.y += e.clientY - dragState.lastY;
+      dragState.lastX = e.clientX;
+      dragState.lastY = e.clientY;
+    });
+    window.addEventListener('pointerup', () => { dragState.active = false; });
+
+    // Notify parent
+    notifyReady();
+
+  } catch(e) {
+    console.error('Init failed:', e);
+    updateStatus('LOAD FAILED: ' + e.message);
+  }
+}
+
+function placeModel() {
+  if(!model || !app) return;
+  const W = app.renderer.width / (app.renderer.resolution || 1);
+  const H = app.renderer.height / (app.renderer.resolution || 1);
+  const mw = model.internalModel?.originalWidth || 512;
+  const mh = model.internalModel?.originalHeight || 512;
+  const baseScale = Math.min(W / mw, H / mh) * 1.3 * currentScale;
+  model.scale.set(baseScale);
+  model.anchor.set(0.5, 0.25);
+  model.x = W / 2;
+  model.y = H * 0.5;
+}
+
+// External API for parent to call
+function setExpression(name) {
+  if(!model) return;
+  try {
+    if(name) {
+      model.expression(name);
+      badgeEl.textContent = 'EXPR: ' + name;
+      badgeEl.classList.add('show');
+    } else {
+      model.expression();
+      badgeEl.classList.remove('show');
+    }
+  } catch(e) { console.warn('Expression error:', e); }
+}
+
+function zoom(factor) {
+  currentScale *= factor;
+  currentScale = Math.max(0.3, Math.min(3.0, currentScale));
+  placeModel();
+}
+
+function resetView() {
+  currentScale = 1.0;
+  placeModel();
+}
+
+function notifyReady() {
+  try {
+    if(window.parent && window.parent !== window) {
+      window.parent.postMessage({ type:'l2d-preview-ready', model:'elfin' }, '*');
+    }
+  } catch(e) {}
+}
+
+// Listen for commands from parent
+window.addEventListener('message', (e) => {
+  const d = e.data;
+  if(!d || !d.type) return;
+  switch(d.type) {
+    case 'l2d-expression': setExpression(d.name); break;
+    case 'l2d-zoom': zoom(d.factor); break;
+    case 'l2d-reset': resetView(); break;
+  }
+});
+
+// Start
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

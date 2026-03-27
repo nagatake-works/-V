@@ -1,0 +1,52 @@
+{
+	"Version": 3,
+	"FileReferences": {
+		"Moc": "elfin.moc3",
+		"Textures": [
+			"elfin.2048/texture_00.png",
+			"elfin.2048/texture_01.png"
+		],
+		"Physics": "elfin.physics3.json",
+		"DisplayInfo": "elfin.cdi3.json",
+		"Expressions": [
+			{ "Name": "love", "File": "love.exp3.json" },
+			{ "Name": "star", "File": "star.exp3.json" },
+			{ "Name": "star2", "File": "star2.exp3.json" },
+			{ "Name": "red", "File": "red.exp3.json" },
+			{ "Name": "hua", "File": "hua.exp3.json" },
+			{ "Name": "flash", "File": "flash.exp3.json" },
+			{ "Name": "hs", "File": "hs.exp3.json" },
+			{ "Name": "ai", "File": "ai.exp3.json" },
+			{ "Name": "h", "File": "h.exp3.json" },
+			{ "Name": "ok", "File": "ok.exp3.json" },
+			{ "Name": "bb", "File": "bb.exp3.json" },
+			{ "Name": "cb", "File": "cb.exp3.json" },
+			{ "Name": "ee", "File": "ee.exp3.json" },
+			{ "Name": "m", "File": "m.exp3.json" },
+			{ "Name": "pu", "File": "pu.exp3.json" },
+			{ "Name": "sb", "File": "sb.exp3.json" },
+			{ "Name": "sq", "File": "sq.exp3.json" },
+			{ "Name": "t", "File": "t.exp3.json" },
+			{ "Name": "tl", "File": "tl.exp3.json" },
+			{ "Name": "wen", "File": "wen.exp3.json" },
+			{ "Name": "wx", "File": "wx.exp3.json" },
+			{ "Name": "A", "File": "A.exp3.json" },
+			{ "Name": "C", "File": "C.exp3.json" },
+			{ "Name": "L", "File": "L.exp3.json" },
+			{ "Name": "R", "File": "R.exp3.json" },
+			{ "Name": "V", "File": "V.exp3.json" }
+		]
+	},
+	"Groups": [
+		{
+			"Target": "Parameter",
+			"Name": "LipSync",
+			"Ids": []
+		},
+		{
+			"Target": "Parameter",
+			"Name": "EyeBlink",
+			"Ids": []
+		}
+	]
+}
