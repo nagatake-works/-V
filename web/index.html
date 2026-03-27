@@ -2120,6 +2120,16 @@ body.model-browse-open #miniroom-nav-btn{
   border-color:rgba(140,100,255,.5);
   background:rgba(100,60,255,.08);
 }
+.mh-upload-row{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 14px;margin-bottom:6px;
+  border:1px solid rgba(140,100,255,.12);border-radius:10px;
+  background:rgba(100,60,255,.03);cursor:pointer;
+  transition:all .2s;
+}
+.mh-upload-row:active{background:rgba(100,60,255,.08);border-color:rgba(140,100,255,.3);}
+.mh-upload-row-title{font-size:12px;color:rgba(220,210,255,.8);font-weight:600;letter-spacing:.3px;}
+.mh-upload-row-sub{font-size:10px;color:rgba(160,140,210,.45);margin-top:2px;}
 .mh-upload-zone .upload-icon{
   font-size:40px;color:rgba(140,100,255,.4);margin-bottom:8px;
 }
@@ -2646,7 +2656,11 @@ textarea.mh-input{
     </div>
     <div class="mh-body" id="mh-body"></div>
     <!-- 静的ファイル入力（label forで直接トリガー、.click()不要） -->
-    <input type="file" id="mh-file-model-static" accept=".zip,.json,.model3.json,.txt,application/zip,application/x-zip-compressed,application/json,text/plain" style="width:0.1px;height:0.1px;opacity:0;overflow:hidden;position:absolute;z-index:-1;">
+    <input type="file" id="mh-file-model-static" accept=".json,.model3.json,.txt" style="width:0.1px;height:0.1px;opacity:0;overflow:hidden;position:absolute;z-index:-1;">
+    <input type="file" id="mh-file-moc3-static" accept=".moc3,application/octet-stream" style="width:0.1px;height:0.1px;opacity:0;overflow:hidden;position:absolute;z-index:-1;">
+    <input type="file" id="mh-file-textures-static" accept="image/png,image/jpeg,.png,.jpg" multiple style="width:0.1px;height:0.1px;opacity:0;overflow:hidden;position:absolute;z-index:-1;">
+    <input type="file" id="mh-file-physics-static" accept=".json,.physics3.json" style="width:0.1px;height:0.1px;opacity:0;overflow:hidden;position:absolute;z-index:-1;">
+    <input type="file" id="mh-file-expressions-static" accept=".json,.exp3.json" multiple style="width:0.1px;height:0.1px;opacity:0;overflow:hidden;position:absolute;z-index:-1;">
     <input type="file" id="mh-file-icon-static" accept="image/*" style="width:0.1px;height:0.1px;opacity:0;overflow:hidden;position:absolute;z-index:-1;">
     <input type="file" id="mh-file-sd-static" accept="image/png,image/*" style="width:0.1px;height:0.1px;opacity:0;overflow:hidden;position:absolute;z-index:-1;">
   </div>
@@ -5218,12 +5232,13 @@ window.addChatExp = function(amount){
 };
 
 /* ── ドロップトースト ── */
-function showDropToast(msg, duration=2800){
+window.showDropToast = function(msg, duration=2800){
   const el = document.getElementById('drop-toast');
+  if(!el) { console.warn('[Toast] drop-toast element not found:', msg); return; }
   el.textContent = msg;
   el.classList.add('show');
   setTimeout(()=>el.classList.remove('show'), duration);
-}
+};
 
 /* ── ステータス上昇通知（ミニキャラ付近に小さく表示）── */
 function showStatNotice(text){
@@ -6508,7 +6523,10 @@ let _mhDraft = {
   id:null, name:'', creator:'ユーザー',
   icon:null, iconName:'', sdImg:null, sdImgName:'',
   modelFile:null, modelFileName:'', modelMeta:null,
-  zipFile:null, zipEntries:null, zipModelPath:null,
+  // 個別ファイルアップロード用
+  uploadedFiles:{}, // { 'elfin.moc3': File, 'texture_00.png': File, ... }
+  blobUrls:{},      // { 'elfin.moc3': 'blob:...', ... }
+  zipModelPath:null, // rewritten model3 blob URL
   personality:'', greeting:'',
   isOfficial:false
 };
@@ -6517,11 +6535,14 @@ window._mhDraft = _mhDraft;
 
 function resetDraft(){
   _mhStep = 1;
+  // 古いblob URLを解放
+  if(_mhDraft.blobUrls) Object.values(_mhDraft.blobUrls).forEach(u=>{ try{URL.revokeObjectURL(u);}catch(e){} });
+  if(_mhDraft.zipModelPath) try{URL.revokeObjectURL(_mhDraft.zipModelPath);}catch(e){}
   _mhDraft = {
     id:null, name:'', creator:'ユーザー',
     icon:null, iconName:'', sdImg:null, sdImgName:'',
     modelFile:null, modelFileName:'', modelMeta:null,
-    zipFile:null, zipEntries:null, zipModelPath:null,
+    uploadedFiles:{}, blobUrls:{}, zipModelPath:null,
     personality:'', greeting:'',
     isOfficial:false
   };
@@ -6608,35 +6629,30 @@ function showModelError(msg){
 }
 
 // ── HUBモーダル開閉 ──
+// ファイル入力のリスナーをリセットするユーティリティ
+function bindFileInput(id, handler){
+  const el = document.getElementById(id);
+  if(!el) return;
+  const clone = el.cloneNode(true);
+  el.parentNode.replaceChild(clone, el);
+  clone.value = '';
+  clone.onchange = handler;
+}
+
 window.openModelHub = function(){
   toggleSideMenu();
   resetDraft();
   document.getElementById('model-hub-modal').classList.add('show');
   document.body.classList.add('model-hub-open');
 
-  // 静的ファイル入力のイベントリスナーをバインド（毎回リセット）
-  const modelInput = document.getElementById('mh-file-model-static');
-  const iconInput = document.getElementById('mh-file-icon-static');
-  const sdInput = document.getElementById('mh-file-sd-static');
-  // cloneNode でリスナーをリセット（多重バインド防止）
-  if(modelInput){
-    const newModel = modelInput.cloneNode(true);
-    modelInput.parentNode.replaceChild(newModel, modelInput);
-    newModel.value = '';
-    newModel.onchange = function(){ console.log('[MH] model file change fired:', this.files[0]?.name); onModelFileSelect(this); };
-  }
-  if(iconInput){
-    const newIcon = iconInput.cloneNode(true);
-    iconInput.parentNode.replaceChild(newIcon, iconInput);
-    newIcon.value = '';
-    newIcon.onchange = function(){ console.log('[MH] icon file change fired'); onImgSelect(this, 'icon'); };
-  }
-  if(sdInput){
-    const newSd = sdInput.cloneNode(true);
-    sdInput.parentNode.replaceChild(newSd, sdInput);
-    newSd.value = '';
-    newSd.onchange = function(){ console.log('[MH] sd file change fired'); onImgSelect(this, 'sdImg'); };
-  }
+  // 全ファイル入力のリスナーバインド
+  bindFileInput('mh-file-model-static', function(){ window.onModel3Select(this); });
+  bindFileInput('mh-file-moc3-static', function(){ window.onMoc3Select(this); });
+  bindFileInput('mh-file-textures-static', function(){ window.onTexturesSelect(this); });
+  bindFileInput('mh-file-physics-static', function(){ window.onPhysicsSelect(this); });
+  bindFileInput('mh-file-expressions-static', function(){ window.onExpressionsSelect(this); });
+  bindFileInput('mh-file-icon-static', function(){ window.onImgSelect(this, 'icon'); });
+  bindFileInput('mh-file-sd-static', function(){ window.onImgSelect(this, 'sdImg'); });
 
   renderStep();
 };
@@ -6663,89 +6679,86 @@ function renderStep(){
   body.classList.toggle('preview-mode', _mhStep === 5);
 
   if(_mhStep === 1){
-    // ======== STEP 1: モデルファイルアップロード（必要素材明記） ========
-    const hasModel = !!_mhDraft.modelFile;
-    const meta = _mhDraft.modelMeta;
-    const entries = _mhDraft.zipEntries;
+    // ======== STEP 1: モデル素材を個別アップロード ========
+    const d = _mhDraft;
+    const uf = d.uploadedFiles;
+    const hasModel3 = !!uf['model3'];
+    const hasMoc3 = !!uf['moc3'];
+    const texCount = Object.keys(uf).filter(k=>k.startsWith('tex_')).length;
+    const hasPhysics = !!uf['physics'];
+    const expCount = Object.keys(uf).filter(k=>k.startsWith('exp_')).length;
+
+    const ok = (v) => v ? 'color:rgba(0,255,150,.7);' : 'color:rgba(255,255,255,.2);';
+    const icon = (v) => v ? 'check_circle' : 'radio_button_unchecked';
 
     body.innerHTML = `
-      <div class="mh-section-title"><span class="material-symbols-rounded" style="font-size:16px;">upload_file</span> STEP 1 — モデルアップロード</div>
+      <div class="mh-section-title"><span class="material-symbols-rounded" style="font-size:16px;">upload_file</span> STEP 1 — モデル素材アップロード</div>
 
-      <!-- 必要素材一覧 -->
-      <div style="background:linear-gradient(135deg,rgba(0,200,255,.04),rgba(60,30,180,.03));border:1px solid rgba(0,200,255,.1);border-radius:10px;padding:14px;margin-bottom:14px;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-          <span class="material-symbols-rounded" style="font-size:18px;color:rgba(0,200,255,.6);">checklist</span>
-          <span style="font-size:11px;color:rgba(0,220,255,.7);font-weight:700;letter-spacing:.5px;">必要な素材</span>
-        </div>
-        <div style="font-size:11px;line-height:2.0;color:rgba(210,195,255,.7);">
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span style="color:rgba(255,80,80,.8);font-weight:700;">必須</span>
-            <code style="background:rgba(0,200,255,.08);padding:1px 6px;border-radius:3px;color:rgba(0,220,255,.8);font-size:10px;">.model3.json</code>
-            モデル定義ファイル
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span style="color:rgba(255,80,80,.8);font-weight:700;">必須</span>
-            <code style="background:rgba(0,200,255,.08);padding:1px 6px;border-radius:3px;color:rgba(0,220,255,.8);font-size:10px;">.moc3</code>
-            モデルデータ
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span style="color:rgba(255,80,80,.8);font-weight:700;">必須</span>
-            <code style="background:rgba(0,200,255,.08);padding:1px 6px;border-radius:3px;color:rgba(255,200,60,.8);font-size:10px;">textures/</code>
-            テクスチャ画像 (.png)
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span style="color:rgba(0,200,255,.6);font-weight:600;">推奨</span>
-            <code style="background:rgba(0,200,255,.08);padding:1px 6px;border-radius:3px;color:rgba(0,200,255,.8);font-size:10px;">.physics3.json</code>
-            物理演算
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span style="color:rgba(0,200,255,.6);font-weight:600;">任意</span>
-            <code style="background:rgba(0,200,255,.08);padding:1px 6px;border-radius:3px;color:rgba(0,200,255,.8);font-size:10px;">.exp3.json</code>
-            表情ファイル
-          </div>
-        </div>
-        <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(0,200,255,.06);font-size:10px;color:rgba(160,140,210,.5);line-height:1.6;">
-          💡 上記をまとめた <strong style="color:rgba(0,220,255,.7);">.zip ファイル</strong> でアップロードしてください。<br>
-          　 モデルファイルなしでも画像＋プロンプトのみで登録できます。
-        </div>
+      <div style="font-size:10px;color:rgba(160,140,210,.55);line-height:1.6;margin-bottom:12px;">
+        Live2Dモデルの各素材を個別にアップロードしてください。<br>
+        モデルなしでも画像＋プロンプトのみで登録できます。
       </div>
 
-      <label for="mh-file-model-static" class="mh-upload-zone" id="mh-upload-model" style="cursor:pointer;">
-        <span class="material-symbols-rounded" style="font-size:48px;color:rgba(140,100,255,.35);">cloud_upload</span>
-        <div class="upload-text">${_mhDraft.modelFileName || 'タップしてファイルを選択'}</div>
-        <div class="upload-hint">.zip（推奨）/ .model3.json</div>
+      <!-- model3.json -->
+      <label for="mh-file-model-static" class="mh-upload-row">
+        <span class="material-symbols-rounded" style="font-size:20px;${ok(hasModel3)}">${icon(hasModel3)}</span>
+        <div style="flex:1;">
+          <div class="mh-upload-row-title">.model3.json <span style="color:rgba(255,80,80,.7);font-size:9px;">必須</span></div>
+          <div class="mh-upload-row-sub">${uf['model3'] ? uf['model3'].name : 'モデル定義ファイル'}</div>
+        </div>
+        <span class="material-symbols-rounded" style="font-size:18px;color:rgba(140,100,255,.4);">upload</span>
       </label>
 
-
-      ${hasModel ? `
-      <div class="mh-preview-card" style="flex-direction:column;gap:8px;">
-        <div style="display:flex;align-items:center;gap:10px;width:100%;">
-          <span class="material-symbols-rounded" style="font-size:28px;color:rgba(0,255,150,.6);">check_circle</span>
-          <div class="mh-preview-info" style="flex:1;">
-            <div class="mh-preview-name">${_mhDraft.modelFileName}</div>
-            <div class="mh-preview-meta">ファイル読み込み完了</div>
-          </div>
-          <span class="material-symbols-rounded" style="font-size:16px;color:rgba(255,100,80,.5);cursor:pointer;" onclick="window._mhDraft.modelFile=null;window._mhDraft.modelFileName='';window._mhDraft.modelMeta=null;window._mhDraft.zipFile=null;window._mhDraft.zipEntries=null;window._mhDraft.zipModelPath=null;renderStep();">close</span>
+      <!-- .moc3 -->
+      <label for="mh-file-moc3-static" class="mh-upload-row">
+        <span class="material-symbols-rounded" style="font-size:20px;${ok(hasMoc3)}">${icon(hasMoc3)}</span>
+        <div style="flex:1;">
+          <div class="mh-upload-row-title">.moc3 <span style="color:rgba(255,80,80,.7);font-size:9px;">必須</span></div>
+          <div class="mh-upload-row-sub">${uf['moc3'] ? uf['moc3'].name + ' (' + (uf['moc3'].size/1024/1024).toFixed(1) + 'MB)' : 'モデルデータ'}</div>
         </div>
-        ${meta ? `
-        <div style="width:100%;background:rgba(0,200,255,.03);border:1px solid rgba(0,200,255,.08);border-radius:8px;padding:8px 10px;font-size:10px;line-height:1.8;">
-          <div style="color:rgba(0,220,255,.7);font-weight:700;margin-bottom:4px;letter-spacing:.5px;">
-            <span class="material-symbols-rounded" style="font-size:12px;vertical-align:-2px;">data_object</span> MODEL INFO
-          </div>
-          <div style="color:rgba(200,220,255,.5);">Version: <span style="color:rgba(0,255,180,.7);">${meta.version}</span></div>
-          <div style="color:rgba(200,220,255,.5);">Moc: <span style="${meta.hasMoc?'color:rgba(0,255,150,.7);':'color:rgba(255,80,80,.6);'}">${meta.moc} ${meta.hasMoc?'✓':'✗ 未検出'}</span></div>
-          <div style="color:rgba(200,220,255,.5);">Textures: <span style="${meta.hasTextures?'color:rgba(255,200,60,.7);':'color:rgba(255,80,80,.6);'}">${meta.textures.length}枚 ${meta.hasTextures?'✓':'✗ 未検出'}</span></div>
-          ${meta.physics ? `<div style="color:rgba(200,220,255,.5);">Physics: <span style="color:rgba(0,200,255,.7);">✓</span></div>` : ''}
-          ${meta.expressions && meta.expressions.length ? `<div style="color:rgba(200,220,255,.5);">Expressions: <span style="color:rgba(180,160,255,.7);">${meta.expressions.length}種</span></div>` : ''}
-        </div>` : ''}
-        ${entries ? `
-        <div style="width:100%;background:rgba(100,60,255,.03);border:1px solid rgba(100,60,255,.08);border-radius:8px;padding:8px 10px;font-size:9px;max-height:100px;overflow-y:auto;">
-          <div style="color:rgba(180,160,255,.6);font-weight:700;margin-bottom:4px;letter-spacing:.5px;">
-            <span class="material-symbols-rounded" style="font-size:12px;vertical-align:-2px;">folder_zip</span> ZIP CONTENTS (${entries.length}件)
-          </div>
-          ${entries.slice(0,15).map(e=>`<div style="color:rgba(200,220,255,.4);padding:1px 0;">${e.name} <span style="color:rgba(100,80,200,.4);">${(e.size/1024).toFixed(0)}KB</span></div>`).join('')}
-          ${entries.length>15?`<div style="color:rgba(100,80,200,.4);margin-top:4px;">... 他${entries.length-15}件</div>`:''}
-        </div>` : ''}
+        <span class="material-symbols-rounded" style="font-size:18px;color:rgba(140,100,255,.4);">upload</span>
+      </label>
+
+      <!-- Textures -->
+      <label for="mh-file-textures-static" class="mh-upload-row">
+        <span class="material-symbols-rounded" style="font-size:20px;${ok(texCount>0)}">${icon(texCount>0)}</span>
+        <div style="flex:1;">
+          <div class="mh-upload-row-title">テクスチャ (.png) <span style="color:rgba(255,80,80,.7);font-size:9px;">必須</span></div>
+          <div class="mh-upload-row-sub">${texCount > 0 ? texCount + '枚選択済み' : '複数選択可'}</div>
+        </div>
+        <span class="material-symbols-rounded" style="font-size:18px;color:rgba(140,100,255,.4);">upload</span>
+      </label>
+
+      <!-- Physics -->
+      <label for="mh-file-physics-static" class="mh-upload-row">
+        <span class="material-symbols-rounded" style="font-size:20px;${ok(hasPhysics)}">${icon(hasPhysics)}</span>
+        <div style="flex:1;">
+          <div class="mh-upload-row-title">.physics3.json <span style="color:rgba(0,200,255,.5);font-size:9px;">推奨</span></div>
+          <div class="mh-upload-row-sub">${uf['physics'] ? uf['physics'].name : '物理演算ファイル'}</div>
+        </div>
+        <span class="material-symbols-rounded" style="font-size:18px;color:rgba(140,100,255,.4);">upload</span>
+      </label>
+
+      <!-- Expressions -->
+      <label for="mh-file-expressions-static" class="mh-upload-row">
+        <span class="material-symbols-rounded" style="font-size:20px;${ok(expCount>0)}">${icon(expCount>0)}</span>
+        <div style="flex:1;">
+          <div class="mh-upload-row-title">.exp3.json <span style="color:rgba(0,200,255,.5);font-size:9px;">任意</span></div>
+          <div class="mh-upload-row-sub">${expCount > 0 ? expCount + '個選択済み' : '表情ファイル（複数選択可）'}</div>
+        </div>
+        <span class="material-symbols-rounded" style="font-size:18px;color:rgba(140,100,255,.4);">upload</span>
+      </label>
+
+      ${d.modelMeta ? `
+      <div style="background:rgba(0,200,255,.03);border:1px solid rgba(0,200,255,.08);border-radius:8px;padding:10px;margin-top:10px;font-size:10px;line-height:1.8;">
+        <div style="color:rgba(0,220,255,.7);font-weight:700;margin-bottom:4px;letter-spacing:.5px;">
+          <span class="material-symbols-rounded" style="font-size:12px;vertical-align:-2px;">data_object</span> MODEL INFO
+        </div>
+        <div style="color:rgba(200,220,255,.5);">Version: <span style="color:rgba(0,255,180,.7);">${d.modelMeta.version}</span></div>
+        <div style="color:rgba(200,220,255,.5);">Moc: <span style="${hasMoc3?'color:rgba(0,255,150,.7);':'color:rgba(255,80,80,.6);'}">${d.modelMeta.moc} ${hasMoc3?'✓':'✗ 未アップロード'}</span></div>
+        <div style="color:rgba(200,220,255,.5);">Textures: <span style="${texCount>0?'color:rgba(255,200,60,.7);':'color:rgba(255,80,80,.6);'}">${d.modelMeta.textures.length}枚必要 / ${texCount}枚アップロード済み</span></div>
+        ${d.modelMeta.physics ? '<div style="color:rgba(200,220,255,.5);">Physics: <span style="'+(hasPhysics?'color:rgba(0,200,255,.7);':'color:rgba(255,200,60,.5);')+'">'+d.modelMeta.physics+(hasPhysics?' ✓':' 未アップロード')+'</span></div>' : ''}
+        ${d.modelMeta.expressions.length ? '<div style="color:rgba(200,220,255,.5);">Expressions: <span style="color:rgba(180,160,255,.7);">'+d.modelMeta.expressions.length+'種定義 / '+expCount+'個アップロード済み</span></div>' : ''}
       </div>` : ''}
 
       <div class="mh-footer-btns">
@@ -6833,7 +6846,8 @@ function renderStep(){
     }, 0);
   } else if(_mhStep === 4){
     // ======== STEP 4: 確認サマリー ========
-    const hasLive2D = _mhDraft.modelMeta && _mhDraft.modelMeta.hasMoc && _mhDraft.modelMeta.hasTextures;
+    const uf4 = _mhDraft.uploadedFiles;
+    const hasLive2D = _mhDraft.modelMeta && !!uf4['moc3'] && Object.keys(uf4).some(k=>k.startsWith('tex_'));
     body.innerHTML = `
       <div class="mh-section-title"><span class="material-symbols-rounded" style="font-size:16px;">fact_check</span> STEP 4 — 登録内容の確認</div>
       <div class="mh-complete-card">
@@ -6918,17 +6932,28 @@ function renderStep(){
       </div>
     `;
 
-    // iframeが読み込まれたらpostMessageでモデルパス(blob URL)を送信
+    // iframeが読み込まれたらBlob URLを生成してpostMessageで送信
     const iframe = document.getElementById('mh-preview-iframe');
-    if(iframe && _mhDraft.zipModelPath){
-      iframe.addEventListener('load', ()=>{
-        setTimeout(()=>{
-          iframe.contentWindow.postMessage({
-            type: 'l2d-load',
-            modelPath: _mhDraft.zipModelPath,
-            name: _mhDraft.name || 'Model'
-          }, '*');
-        }, 300);
+    if(iframe){
+      iframe.addEventListener('load', async ()=>{
+        try {
+          // 個別ファイルからBlob URLを生成
+          const modelPath = await window.buildBlobUrlsFromFiles();
+          if(modelPath){
+            setTimeout(()=>{
+              iframe.contentWindow.postMessage({
+                type: 'l2d-load',
+                modelPath: modelPath,
+                name: _mhDraft.name || 'Model'
+              }, '*');
+            }, 300);
+          } else {
+            window.showDropToast('モデルデータの構築に失敗しました');
+          }
+        } catch(e){
+          console.error('Preview load error:', e);
+          window.showDropToast('プレビューの読み込みに失敗: '+e.message);
+        }
       });
     }
   }
@@ -6993,196 +7018,154 @@ window.mhPrev = function(){
   if(_mhStep > 1){ _mhStep--; renderStep(); }
 };
 
-// ── ファイル選択ハンドラ ──
-window.onModelFileSelect = async function(input){
-  console.log('[MH] onModelFileSelect CALLED, files:', input.files?.length, 'file0:', input.files?.[0]?.name);
+// ── 個別ファイル選択ハンドラ ──
+
+// .model3.json 選択
+window.onModel3Select = function(input){
   try {
-    if(!input.files || !input.files[0]){
-      showDropToast('ファイルが選択されませんでした');
-      return;
-    }
+    if(!input.files || !input.files[0]) return;
     const f = input.files[0];
-    showDropToast(`読み込み中: ${f.name} (${(f.size/1024/1024).toFixed(1)}MB)`);
+    _mhDraft.uploadedFiles['model3'] = f;
     _mhDraft.modelFileName = f.name;
 
-    // ZIPの判定を拡張子だけでなくMIMEタイプでも行う
-    const isZip = f.name.toLowerCase().endsWith('.zip')
-      || f.type === 'application/zip'
-      || f.type === 'application/x-zip-compressed'
-      || f.type === 'application/x-zip';
-
-    if(isZip){
-      // ── ZIP ファイル処理 ──
-      if(typeof JSZip === 'undefined'){
-        showDropToast('ZIP解析ライブラリの読み込みに失敗しました。ページを再読み込みしてください。');
-        _mhDraft.modelFile = '__zip_no_jszip__';
-        _mhDraft.modelMeta = null;
-        renderStep();
-        return;
-      }
-    showDropToast('ZIP を解析中...');
-    try {
-      const zip = await JSZip.loadAsync(f);
-      const entries = [];
-      let model3File = null;
-      let model3Path = '';
-      let basePath = '';
-
-      // ZIP内のファイル一覧を収集
-      zip.forEach((relativePath, zipEntry) => {
-        if(zipEntry.dir) return;
-        // __MACOSX や .DS_Store を除外
-        if(relativePath.startsWith('__MACOSX') || relativePath.endsWith('.DS_Store')) return;
-        entries.push({ name: relativePath, size: zipEntry._data ? zipEntry._data.uncompressedSize : 0 });
-        // model3.json を探す
-        if(relativePath.endsWith('.model3.json')){
-          model3File = zipEntry;
-          model3Path = relativePath;
-          // ベースパスを計算（model3.jsonのディレクトリ）
-          const idx = relativePath.lastIndexOf('/');
-          basePath = idx >= 0 ? relativePath.substring(0, idx + 1) : '';
-        }
-      });
-
-      _mhDraft.zipEntries = entries;
-      _mhDraft.zipFile = zip;
-
-      if(model3File){
-        // model3.json をパースしてメタ情報取得
-        const model3Text = await model3File.async('text');
-        const model3Json = JSON.parse(model3Text);
-        const refs = model3Json.FileReferences || {};
-
-        // ZIP内の素材存在チェック
-        const mocPath = basePath + (refs.Moc || '');
-        const hasMoc = !!zip.file(mocPath);
-        const textures = refs.Textures || [];
-        const hasTextures = textures.length > 0 && textures.every(t => !!zip.file(basePath + t));
-        const expressions = (refs.Expressions || []).map(e => e.Name || e.name || '').filter(Boolean);
-
-        _mhDraft.modelFile = model3Text;
-        _mhDraft.modelMeta = {
-          version: model3Json.Version || '不明',
-          moc: refs.Moc || '不明',
-          textures: textures,
-          physics: refs.Physics || null,
-          displayInfo: refs.DisplayInfo || null,
-          hasMoc: hasMoc,
-          hasTextures: hasTextures,
-          expressions: expressions,
-          basePath: basePath
-        };
-
-        // ZIP内の全素材をBlob URLに展開（Live2Dプレビュー用）
-        const blobUrls = {};
-        const filePromises = [];
-        zip.forEach((relativePath, zipEntry) => {
-          if(zipEntry.dir || relativePath.startsWith('__MACOSX') || relativePath.endsWith('.DS_Store')) return;
-          // model3.jsonからの相対パスで保存
-          const relToModel = basePath ? relativePath.replace(basePath, '') : relativePath;
-          filePromises.push(
-            zipEntry.async('blob').then(blob => {
-              // 拡張子からMIMEタイプを推定
-              let mime = 'application/octet-stream';
-              if(relativePath.endsWith('.png')) mime = 'image/png';
-              else if(relativePath.endsWith('.jpg') || relativePath.endsWith('.jpeg')) mime = 'image/jpeg';
-              else if(relativePath.endsWith('.json')) mime = 'application/json';
-              blobUrls[relToModel] = URL.createObjectURL(new Blob([blob], { type: mime }));
-            })
-          );
-        });
-        await Promise.all(filePromises);
-
-        // model3.jsonを書き換えてBlob URLを参照するよう変更
-        const rewrittenModel3 = JSON.parse(JSON.stringify(model3Json));
-        if(rewrittenModel3.FileReferences){
-          const fr = rewrittenModel3.FileReferences;
-          if(fr.Moc && blobUrls[fr.Moc]) fr.Moc = blobUrls[fr.Moc];
-          if(fr.Textures) fr.Textures = fr.Textures.map(t => blobUrls[t] || t);
-          if(fr.Physics && blobUrls[fr.Physics]) fr.Physics = blobUrls[fr.Physics];
-          if(fr.DisplayInfo && blobUrls[fr.DisplayInfo]) fr.DisplayInfo = blobUrls[fr.DisplayInfo];
-          if(fr.Expressions) fr.Expressions = fr.Expressions.map(e => ({
-            ...e,
-            File: blobUrls[e.File] || e.File
-          }));
-        }
-        // rewritten model3.json自体もBlob URL化
-        const model3Blob = new Blob([JSON.stringify(rewrittenModel3)], { type: 'application/json' });
-        _mhDraft.zipModelPath = URL.createObjectURL(model3Blob);
-        _mhDraft._blobUrls = blobUrls; // cleanup用
-
-        renderStep();
-        showDropToast(`ZIP解析完了: ${entries.length}ファイル, ${hasMoc?'moc3 ✓':'moc3 ✗'}, ${hasTextures?'textures ✓':'textures ✗'}`);
-      } else {
-        _mhDraft.modelFile = '__zip_no_model3__';
-        _mhDraft.modelMeta = null;
-        _mhDraft.zipModelPath = null;
-        renderStep();
-        showDropToast('ZIP内に .model3.json が見つかりませんでした');
-      }
-    } catch(e) {
-      console.error('ZIP parse error:', e);
-      _mhDraft.modelFile = '__zip_error__';
-      _mhDraft.modelMeta = null;
-      renderStep();
-      showDropToast('ZIPの解析に失敗しました: ' + e.message);
-    }
-    return;
-  }
-
-  // ── JSON / model3.json / .txt 処理 ──
-  const isJsonLike = f.name.endsWith('.json') || f.name.endsWith('.txt') || f.name.endsWith('.model3.json');
-
-  if(isJsonLike){
-    const textReader = new FileReader();
-    textReader.onload = ()=>{
-      try{
-        const json = JSON.parse(textReader.result);
-        _mhDraft.modelFile = JSON.stringify({
-          _type: 'model3json',
-          Version: json.Version || 3,
-          FileReferences: json.FileReferences || {},
-          Groups: json.Groups || [],
-          fileName: f.name
-        });
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      try {
+        const json = JSON.parse(reader.result);
         const refs = json.FileReferences || {};
+        _mhDraft.modelFile = reader.result;
         _mhDraft.modelMeta = {
           version: json.Version || '不明',
           moc: refs.Moc || '不明',
           textures: refs.Textures || [],
           physics: refs.Physics || null,
           displayInfo: refs.DisplayInfo || null,
-          hasMoc: false, // JSONのみではmoc3未検証
+          hasMoc: false,
           hasTextures: false,
-          expressions: (refs.Expressions||[]).map(e=>e.Name||'').filter(Boolean)
+          expressions: (refs.Expressions||[]).map(e=>e.Name||e.name||'').filter(Boolean)
         };
         renderStep();
-        showDropToast(`「${f.name}」を解析しました（Live2D Model v${json.Version || '?'}）`);
-      }catch(e){
-        if(textReader.result.length < 50000){
-          _mhDraft.modelFile = textReader.result;
-        } else {
-          _mhDraft.modelFile = '__large_file__';
-        }
+        window.showDropToast('model3.json を読み込みました (v' + (json.Version||'?') + ')');
+      } catch(e){
         _mhDraft.modelMeta = null;
         renderStep();
-        showDropToast(`「${f.name}」を読み込みました`);
+        window.showDropToast('JSONの解析に失敗しました');
       }
     };
-    textReader.onerror = ()=>{
-      showDropToast('ファイルの読み込みに失敗しました');
-    };
-    textReader.readAsText(f);
-  } else {
-    _mhDraft.modelFile = '__binary_model__';
-    _mhDraft.modelMeta = null;
+    reader.onerror = ()=>{ window.showDropToast('ファイル読み込み失敗'); };
+    reader.readAsText(f);
+  } catch(e){ console.error('onModel3Select:', e); window.showDropToast('エラー: '+e.message); }
+};
+
+// .moc3 選択
+window.onMoc3Select = function(input){
+  try {
+    if(!input.files || !input.files[0]) return;
+    const f = input.files[0];
+    _mhDraft.uploadedFiles['moc3'] = f;
     renderStep();
-    showDropToast(`「${f.name}」を登録しました`);
+    window.showDropToast(f.name + ' (' + (f.size/1024/1024).toFixed(1) + 'MB) を追加');
+  } catch(e){ console.error('onMoc3Select:', e); }
+};
+
+// テクスチャ選択（複数）
+window.onTexturesSelect = function(input){
+  try {
+    if(!input.files || !input.files.length) return;
+    // 既存のテクスチャをクリアして再設定
+    Object.keys(_mhDraft.uploadedFiles).filter(k=>k.startsWith('tex_')).forEach(k=>delete _mhDraft.uploadedFiles[k]);
+    for(let i=0; i<input.files.length; i++){
+      _mhDraft.uploadedFiles['tex_'+i] = input.files[i];
+    }
+    renderStep();
+    window.showDropToast(input.files.length + '枚のテクスチャを追加');
+  } catch(e){ console.error('onTexturesSelect:', e); }
+};
+
+// Physics選択
+window.onPhysicsSelect = function(input){
+  try {
+    if(!input.files || !input.files[0]) return;
+    _mhDraft.uploadedFiles['physics'] = input.files[0];
+    renderStep();
+    window.showDropToast('物理演算ファイルを追加');
+  } catch(e){ console.error('onPhysicsSelect:', e); }
+};
+
+// Expression選択（複数）
+window.onExpressionsSelect = function(input){
+  try {
+    if(!input.files || !input.files.length) return;
+    Object.keys(_mhDraft.uploadedFiles).filter(k=>k.startsWith('exp_')).forEach(k=>delete _mhDraft.uploadedFiles[k]);
+    for(let i=0; i<input.files.length; i++){
+      _mhDraft.uploadedFiles['exp_'+i] = input.files[i];
+    }
+    renderStep();
+    window.showDropToast(input.files.length + '個の表情ファイルを追加');
+  } catch(e){ console.error('onExpressionsSelect:', e); }
+};
+
+// 個別アップロードファイルからBlob URLを生成（プレビュー用）
+window.buildBlobUrlsFromFiles = async function(){
+  const uf = _mhDraft.uploadedFiles;
+  const blobUrls = {};
+  const meta = _mhDraft.modelMeta;
+  if(!meta) return null;
+
+  // model3.jsonを再パース
+  let model3Json;
+  try { model3Json = JSON.parse(_mhDraft.modelFile); } catch(e){ return null; }
+  const refs = model3Json.FileReferences || {};
+
+  // moc3
+  if(uf['moc3'] && refs.Moc){
+    blobUrls[refs.Moc] = URL.createObjectURL(uf['moc3']);
   }
-  } catch(outerErr) {
-    console.error('onModelFileSelect error:', outerErr);
-    showDropToast('ファイル処理中にエラーが発生しました: ' + outerErr.message);
+  // textures
+  const texKeys = Object.keys(uf).filter(k=>k.startsWith('tex_')).sort();
+  const textures = refs.Textures || [];
+  for(let i=0; i<textures.length && i<texKeys.length; i++){
+    blobUrls[textures[i]] = URL.createObjectURL(uf[texKeys[i]]);
   }
+  // physics
+  if(uf['physics'] && refs.Physics){
+    blobUrls[refs.Physics] = URL.createObjectURL(uf['physics']);
+  }
+  // displayInfo
+  if(uf['displayInfo'] && refs.DisplayInfo){
+    blobUrls[refs.DisplayInfo] = URL.createObjectURL(uf['displayInfo']);
+  }
+  // expressions
+  const expKeys = Object.keys(uf).filter(k=>k.startsWith('exp_')).sort();
+  const expressions = refs.Expressions || [];
+  for(let i=0; i<expressions.length && i<expKeys.length; i++){
+    if(expressions[i].File){
+      blobUrls[expressions[i].File] = URL.createObjectURL(uf[expKeys[i]]);
+    }
+  }
+
+  // model3.jsonを書き換えてBlob URLを参照
+  const rewritten = JSON.parse(JSON.stringify(model3Json));
+  const fr = rewritten.FileReferences;
+  if(fr){
+    if(fr.Moc && blobUrls[fr.Moc]) fr.Moc = blobUrls[fr.Moc];
+    if(fr.Textures) fr.Textures = fr.Textures.map(t => blobUrls[t] || t);
+    if(fr.Physics && blobUrls[fr.Physics]) fr.Physics = blobUrls[fr.Physics];
+    if(fr.DisplayInfo && blobUrls[fr.DisplayInfo]) fr.DisplayInfo = blobUrls[fr.DisplayInfo];
+    if(fr.Expressions) fr.Expressions = fr.Expressions.map(e => ({
+      ...e,
+      File: blobUrls[e.File] || e.File
+    }));
+  }
+
+  // 古いblob URLを解放
+  if(_mhDraft.blobUrls) Object.values(_mhDraft.blobUrls).forEach(u=>{ try{URL.revokeObjectURL(u);}catch(e){} });
+  if(_mhDraft.zipModelPath) try{URL.revokeObjectURL(_mhDraft.zipModelPath);}catch(e){}
+
+  _mhDraft.blobUrls = blobUrls;
+  const model3Blob = new Blob([JSON.stringify(rewritten)], { type: 'application/json' });
+  _mhDraft.zipModelPath = URL.createObjectURL(model3Blob);
+  return _mhDraft.zipModelPath;
 };
 
 window.onImgSelect = function(input, key){
@@ -7200,6 +7183,7 @@ window.onImgSelect = function(input, key){
 // ── モデル保存（ローディング→チャット画面遷移） ──
 window.saveNewModel = function(){
   const models = loadModels();
+  const ufSave = _mhDraft.uploadedFiles;
   const newModel = {
     id: 'user_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
     name: _mhDraft.name.trim(),
@@ -7209,7 +7193,7 @@ window.saveNewModel = function(){
     modelFile: _mhDraft.modelFile,
     modelFileName: _mhDraft.modelFileName || '',
     modelMeta: _mhDraft.modelMeta || null,
-    hasLive2D: !!(_mhDraft.modelMeta && _mhDraft.modelMeta.hasMoc && _mhDraft.modelMeta.hasTextures),
+    hasLive2D: !!(_mhDraft.modelMeta && ufSave['moc3'] && Object.keys(ufSave).some(k=>k.startsWith('tex_'))),
     personality: _mhDraft.personality.trim(),
     greeting: _mhDraft.greeting.trim() || 'はじめまして！よろしくね！',
     isOfficial: false,
@@ -7218,13 +7202,13 @@ window.saveNewModel = function(){
 
   // 保存前にバリデーション
   if(!newModel.name){
-    showDropToast('キャラクター名が入力されていません');
+    window.showDropToast('キャラクター名が入力されていません');
     return;
   }
 
   // Blob URLをクリーンアップ（メモリ解放）
-  if(_mhDraft._blobUrls){
-    Object.values(_mhDraft._blobUrls).forEach(url => {
+  if(_mhDraft.blobUrls){
+    Object.values(_mhDraft.blobUrls).forEach(url => {
       try{ URL.revokeObjectURL(url); }catch(e){}
     });
   }
