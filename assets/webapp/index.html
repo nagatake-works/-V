@@ -1471,9 +1471,7 @@ body.sidemenu-open #miniroom-nav-btn{
 .dur-bar-fill.critical{background:linear-gradient(90deg,#ff3333,#ff0066);animation:durPulse .8s ease-in-out infinite;}
 @keyframes durPulse{0%,100%{opacity:1;}50%{opacity:.5;}}
 .dur-text{font-size:8px;color:rgba(200,220,255,.5);text-align:center;margin-top:1px;letter-spacing:.03em;}
-.shop-dur-bar{display:flex;align-items:center;gap:4px;margin-top:2px;}
-.shop-dur-bar .dur-bar-wrap{flex:1;height:3px;}
-.shop-dur-label{font-size:9px;color:rgba(200,220,255,.45);white-space:nowrap;}
+.shop-dur-bar{display:flex;align-items:center;gap:6px;margin-top:5px;padding:4px 0;}\n.shop-dur-bar .dur-bar-wrap{flex:1;height:4px;border-radius:2px;}\n.shop-dur-bar .dur-label{font-size:8px;color:rgba(200,220,255,.5);white-space:nowrap;letter-spacing:.3px;}
 
 /* 装備詳細ポップアップ */
 #mr-equip-popup{
@@ -1555,11 +1553,11 @@ body.sidemenu-open #miniroom-nav-btn{
 
 #shop-header{
   display:flex;align-items:center;justify-content:space-between;
-  padding:12px 14px 10px;
-  border-bottom:1px solid rgba(0,200,255,.12);
-  background:linear-gradient(180deg,rgba(4,8,20,.98),rgba(6,12,28,.9));
+  padding:14px 16px 12px;
+  border-bottom:1px solid rgba(0,200,255,.15);
+  background:linear-gradient(180deg,rgba(4,8,20,.98),rgba(6,12,28,.92));
   position:relative;z-index:2;
-  box-shadow:0 2px 16px rgba(0,200,255,.06);
+  box-shadow:0 4px 24px rgba(0,200,255,.08);
 }
 #shop-header::before,#shop-header::after{
   content:'';position:absolute;
@@ -1600,18 +1598,25 @@ body.sidemenu-open #miniroom-nav-btn{
   position:relative;z-index:2;
 }
 .shop-tab{
-  flex:1;height:34px;border:none;
+  flex:1;height:38px;border:none;
   background:transparent;color:rgba(0,200,255,.35);
-  font-size:9px;letter-spacing:2px;cursor:pointer;
-  border-bottom:2px solid transparent;transition:all .15s;
+  font-size:9px;letter-spacing:2.5px;cursor:pointer;
+  border-bottom:2px solid transparent;
+  transition:all .2s cubic-bezier(.22,.61,.36,1);
   text-transform:uppercase;
   -webkit-tap-highlight-color:transparent;
+  position:relative;
 }
 .shop-tab.active{
-  color:#00c8ff;
-  border-bottom-color:#00c8ff;
-  background:rgba(0,200,255,.05);
-  text-shadow:0 0 8px rgba(0,200,255,.4);
+  color:#00e0ff;
+  border-bottom-color:#00e0ff;
+  background:linear-gradient(180deg,transparent,rgba(0,200,255,.06));
+  text-shadow:0 0 10px rgba(0,200,255,.5);
+}
+.shop-tab.active::after{
+  content:'';position:absolute;bottom:0;left:20%;right:20%;height:2px;
+  background:linear-gradient(90deg,transparent,rgba(0,220,255,.6),transparent);
+  filter:blur(2px);
 }
 
 #shop-list{
@@ -1625,67 +1630,157 @@ body.sidemenu-open #miniroom-nav-btn{
 #shop-list::-webkit-scrollbar-thumb{background:rgba(0,200,255,.2);}
 
 .shop-item{
-  display:flex;align-items:center;gap:10px;
-  background:rgba(0,0,0,.3);
-  border:1px solid rgba(0,200,255,.1);
-  border-radius:3px;padding:10px 11px;
-  cursor:pointer;transition:background .15s,border-color .15s,box-shadow .15s;
-  position:relative;overflow:hidden;
+  display:flex;align-items:flex-start;gap:12px;
+  background:linear-gradient(135deg,rgba(8,14,30,.85),rgba(4,8,20,.95));
+  border:1px solid rgba(0,200,255,.12);
+  border-radius:8px;padding:14px 14px 12px;
+  cursor:pointer;position:relative;overflow:hidden;
+  transition:all .25s cubic-bezier(.22,.61,.36,1);
+  backdrop-filter:blur(6px);
+}
+.shop-item::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent 5%,rgba(0,200,255,.2) 30%,rgba(0,200,255,.25) 50%,rgba(0,200,255,.2) 70%,transparent 95%);
 }
 .shop-item::after{
-  content:'';position:absolute;top:0;left:0;right:0;height:1px;
-  background:linear-gradient(90deg,transparent,rgba(0,200,255,.15),transparent);
+  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent 10%,rgba(0,200,255,.06) 50%,transparent 90%);
 }
-.shop-item:hover{
-  background:rgba(0,200,255,.05);
-  border-color:rgba(0,200,255,.2);
-  box-shadow:0 0 12px rgba(0,200,255,.06);
+.shop-item:active{
+  transform:scale(.985);
+  background:linear-gradient(135deg,rgba(0,200,255,.08),rgba(8,14,30,.9));
+  border-color:rgba(0,200,255,.3);
+  box-shadow:0 0 20px rgba(0,200,255,.1),inset 0 0 20px rgba(0,200,255,.03);
 }
 .shop-item.equipped{
-  border-color:rgba(0,255,150,.3);
-  background:rgba(0,255,150,.04);
-  box-shadow:0 0 10px rgba(0,255,150,.06);
+  border-color:rgba(0,255,150,.35);
+  background:linear-gradient(135deg,rgba(0,255,150,.06),rgba(4,20,12,.9));
+  box-shadow:0 0 16px rgba(0,255,150,.08),inset 0 0 30px rgba(0,255,150,.03);
 }
-/* 購入済みアイテムをハイライト */
+.shop-item.equipped::after{
+  background:linear-gradient(90deg,transparent 5%,rgba(0,255,150,.15) 50%,transparent 95%);
+}
 .shop-item.owned{
-  border-color:rgba(0,200,255,.35);
-  background:rgba(0,200,255,.06);
-  box-shadow:0 0 10px rgba(0,200,255,.08);
+  border-color:rgba(0,200,255,.3);
+  background:linear-gradient(135deg,rgba(0,200,255,.05),rgba(4,12,24,.9));
+  box-shadow:0 0 12px rgba(0,200,255,.06);
 }
-.shop-item.owned::before{
-  content:'\2713  OWNED';position:absolute;top:4px;right:6px;
-  font-size:7px;letter-spacing:1.5px;color:rgba(0,200,255,.6);
-  z-index:1;background:rgba(0,200,255,.1);padding:1px 5px;border-radius:3px;
-}
-.shop-item-icon{font-size:36px;width:90px;height:90px;display:flex;align-items:center;justify-content:center;text-align:center;flex-shrink:0;}
-.shop-item-info{flex:1;min-width:0;overflow:hidden;}
-.shop-item-name{font-size:11px;font-weight:700;color:rgba(200,230,255,.9);letter-spacing:.5px;white-space:normal;word-break:break-word;line-height:1.35;}
-.shop-item-desc{font-size:9px;color:rgba(0,200,255,.4);margin-top:2px;letter-spacing:.3px;white-space:normal;word-break:break-word;line-height:1.35;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
-.shop-item-stats{font-size:9px;color:rgba(0,255,150,.6);margin-top:2px;white-space:normal;word-break:break-word;line-height:1.35;}
-.shop-item-skill{font-size:9px;color:rgba(180,120,255,.8);margin-top:4px;white-space:normal;word-break:break-word;line-height:1.4;background:rgba(140,80,255,.06);border:1px solid rgba(140,80,255,.15);border-radius:4px;padding:4px 7px;}
-.shop-item-skill .skill-name{font-weight:700;color:rgba(200,150,255,.95);}
-.shop-item-skill .skill-detail{font-size:8px;color:rgba(180,140,255,.55);margin-top:1px;display:block;}
-.shop-item-skill .skill-dmg{color:rgba(255,130,130,.7);font-weight:700;}
-.shop-item-skill .skill-effect-heal{color:rgba(100,255,150,.7);font-weight:700;}
-.shop-item-skill .skill-effect-reflect{color:rgba(100,180,255,.7);font-weight:700;}
-.shop-item-skill .skill-effect-pet{color:rgba(255,200,80,.7);font-weight:700;}
-.shop-item-price{
-  font-size:11px;font-weight:700;color:#ffd050;
-  display:flex;flex-direction:column;align-items:flex-end;gap:3px;
-  flex-shrink:0;
-}
-.shop-item-price .equipped-label{
-  font-size:8px;color:rgba(0,255,150,.7);font-weight:400;letter-spacing:1px;
+.shop-item.owned .shop-owned-badge{
+  position:absolute;top:8px;right:10px;
+  font-size:7px;letter-spacing:1.8px;color:rgba(0,200,255,.7);
+  background:rgba(0,200,255,.08);border:1px solid rgba(0,200,255,.2);
+  padding:2px 8px;border-radius:10px;
+  text-transform:uppercase;font-weight:600;
 }
 
-/* レアリティ左ボーダー（サイバー版） */
-.rarity-N{border-left:2px solid rgba(100,150,200,.4);}
-.rarity-R{border-left:2px solid rgba(0,200,255,.7);box-shadow:inset 3px 0 10px rgba(0,200,255,.08);}
-.rarity-SR{border-left:2px solid rgba(180,80,255,.8);box-shadow:inset 3px 0 10px rgba(180,80,255,.08);}
+/* アイコンエリア */
+.shop-item-icon{
+  width:72px;height:72px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,rgba(0,200,255,.04),rgba(0,0,0,.3));
+  border:1px solid rgba(0,200,255,.08);border-radius:8px;
+  position:relative;overflow:hidden;
+  font-size:32px;
+}
+.shop-item-icon::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(0,200,255,.06) 0%,transparent 40%);
+  pointer-events:none;
+}
+.shop-item-icon img{
+  width:64px!important;height:64px!important;
+  object-fit:contain!important;
+  filter:drop-shadow(0 2px 6px rgba(0,200,255,.35))!important;
+  border-radius:4px!important;
+}
+
+/* 情報エリア */
+.shop-item-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}
+.shop-item-name{
+  font-size:12px;font-weight:700;color:rgba(220,240,255,.95);
+  letter-spacing:.4px;line-height:1.3;
+  text-shadow:0 0 12px rgba(0,200,255,.15);
+}
+.shop-item-desc{
+  font-size:9px;color:rgba(0,200,255,.45);letter-spacing:.3px;
+  line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;
+  -webkit-box-orient:vertical;overflow:hidden;
+}
+.shop-item-stats{
+  display:flex;flex-wrap:wrap;gap:4px 8px;
+  margin-top:2px;
+}
+.shop-item-stats .stat-chip{
+  font-size:9px;font-weight:600;color:rgba(0,255,180,.8);
+  background:rgba(0,255,150,.06);border:1px solid rgba(0,255,150,.15);
+  border-radius:4px;padding:1px 6px;
+  line-height:1.5;letter-spacing:.3px;
+}
+.shop-item-stats .stat-chip.negative{color:rgba(255,100,80,.8);background:rgba(255,80,60,.06);border-color:rgba(255,80,60,.15);}
+
+/* スキル表示 */
+.shop-item-skill{
+  margin-top:4px;padding:6px 8px;
+  background:linear-gradient(135deg,rgba(140,60,255,.08),rgba(80,40,200,.04));
+  border:1px solid rgba(140,80,255,.18);border-radius:6px;
+  font-size:9px;color:rgba(180,140,255,.85);
+  line-height:1.4;position:relative;overflow:hidden;
+}
+.shop-item-skill::before{
+  content:'';position:absolute;top:0;left:0;bottom:0;width:2px;
+  background:linear-gradient(180deg,rgba(180,100,255,.6),rgba(100,60,255,.3));
+}
+.shop-item-skill .skill-name{font-weight:700;color:rgba(210,170,255,.95);font-size:10px;}
+.shop-item-skill .skill-detail{
+  font-size:8.5px;color:rgba(180,140,255,.6);margin-top:2px;display:block;
+}
+.shop-item-skill .skill-dmg{color:rgba(255,110,110,.85);font-weight:700;}
+.shop-item-skill .skill-effect-heal{color:rgba(80,255,140,.85);font-weight:700;}
+.shop-item-skill .skill-effect-reflect{color:rgba(80,180,255,.85);font-weight:700;}
+.shop-item-skill .skill-effect-pet{color:rgba(255,200,60,.85);font-weight:700;}
+
+/* 価格エリア */
+.shop-item-price{
+  position:absolute;bottom:12px;right:14px;
+  font-size:13px;font-weight:800;color:#ffd050;
+  display:flex;flex-direction:column;align-items:flex-end;gap:4px;
+  text-shadow:0 0 10px rgba(255,200,60,.3);
+}
+.shop-item-price .equipped-label{
+  font-size:8px;color:rgba(0,255,150,.8);font-weight:600;
+  letter-spacing:1.2px;text-transform:uppercase;
+  background:rgba(0,255,150,.08);border:1px solid rgba(0,255,150,.2);
+  padding:2px 8px;border-radius:10px;
+}
+
+/* レアリティ（グロー＋左ボーダー強化） */
+.rarity-N{
+  border-left:3px solid rgba(120,160,200,.35);
+}
+.rarity-R{
+  border-left:3px solid rgba(0,180,255,.65);
+  box-shadow:inset 4px 0 16px rgba(0,200,255,.06);
+}
+.rarity-R .shop-item-icon{border-color:rgba(0,180,255,.2);}
+.rarity-SR{
+  border-left:3px solid rgba(180,80,255,.75);
+  box-shadow:inset 4px 0 16px rgba(180,80,255,.06);
+}
+.rarity-SR .shop-item-icon{border-color:rgba(180,80,255,.2);}
+.rarity-SR .shop-item-name{color:rgba(210,180,255,.95);}
 .rarity-SSR{
-  border-left:2px solid rgba(255,200,60,.9);
-  box-shadow:inset 3px 0 12px rgba(255,200,60,.1);
-  background:rgba(255,200,60,.03);
+  border-left:3px solid rgba(255,200,60,.85);
+  box-shadow:inset 4px 0 18px rgba(255,200,60,.08);
+  background:linear-gradient(135deg,rgba(255,200,60,.04),rgba(8,14,30,.9));
+}
+.rarity-SSR .shop-item-icon{border-color:rgba(255,200,60,.25);}
+.rarity-SSR .shop-item-name{color:rgba(255,230,180,.95);text-shadow:0 0 12px rgba(255,200,60,.2);}
+@keyframes ssrShimmer{0%{left:-100%;}100%{left:200%;}}
+.rarity-SSR::before{
+  content:'';position:absolute;top:0;width:40%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,200,60,.04),transparent);
+  animation:ssrShimmer 4s ease-in-out infinite;
+  pointer-events:none;
 }
 
 /* 通知バッジ */
@@ -1926,6 +2021,294 @@ body.sidemenu-open #miniroom-nav-btn{
   text-align:center;
   font-size:10px;color:rgba(168,216,255,.25);letter-spacing:1px;
 }
+
+/* ══════════════════════════════════
+   MODEL HUB - モデル登録プラットフォーム
+══════════════════════════════════ */
+#model-hub-modal{
+  position:fixed;inset:0;z-index:400;
+  display:none;flex-direction:column;
+  background:linear-gradient(160deg,#020610 0%,#060418 50%,#020810 100%);
+  padding-top:env(safe-area-inset-top);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+#model-hub-modal.show{display:flex;}
+#model-hub-modal::before{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background-image:
+    radial-gradient(circle at 20% 20%,rgba(100,60,255,.04) 0%,transparent 50%),
+    radial-gradient(circle at 80% 80%,rgba(0,200,255,.03) 0%,transparent 50%);
+}
+
+.mh-header{
+  display:flex;align-items:center;gap:12px;
+  padding:14px 16px 12px;
+  border-bottom:1px solid rgba(100,60,255,.15);
+  background:linear-gradient(180deg,rgba(4,6,18,.98),rgba(8,6,24,.92));
+  position:relative;z-index:2;
+  box-shadow:0 4px 24px rgba(100,60,255,.06);
+}
+.mh-back{
+  width:34px;height:34px;border:1px solid rgba(100,60,255,.2);
+  border-radius:8px;background:rgba(100,60,255,.06);
+  color:rgba(200,180,255,.7);font-size:16px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .2s;
+}
+.mh-back:active{background:rgba(100,60,255,.15);}
+.mh-title{
+  font-size:10px;letter-spacing:4px;color:rgba(180,150,255,.6);
+  text-transform:uppercase;flex:1;
+}
+.mh-step-indicator{
+  display:flex;gap:6px;align-items:center;
+}
+.mh-step-dot{
+  width:8px;height:8px;border-radius:50%;
+  background:rgba(100,60,255,.15);border:1px solid rgba(100,60,255,.2);
+  transition:all .3s;
+}
+.mh-step-dot.active{
+  background:rgba(140,100,255,.7);border-color:rgba(140,100,255,.6);
+  box-shadow:0 0 8px rgba(140,100,255,.4);
+}
+.mh-step-dot.done{
+  background:rgba(0,255,150,.5);border-color:rgba(0,255,150,.4);
+}
+
+.mh-body{
+  flex:1;overflow-y:auto;padding:20px 16px 32px;
+  position:relative;z-index:2;
+  -webkit-overflow-scrolling:touch;
+}
+
+.mh-section-title{
+  font-size:11px;letter-spacing:3px;
+  color:rgba(180,150,255,.5);text-transform:uppercase;
+  margin-bottom:16px;
+  display:flex;align-items:center;gap:10px;
+}
+.mh-section-title::after{
+  content:'';flex:1;height:1px;
+  background:linear-gradient(90deg,rgba(100,60,255,.2),transparent);
+}
+
+.mh-upload-zone{
+  border:2px dashed rgba(140,100,255,.25);
+  border-radius:12px;padding:32px 20px;
+  text-align:center;cursor:pointer;
+  background:rgba(100,60,255,.03);
+  transition:all .25s;
+  position:relative;overflow:hidden;
+}
+.mh-upload-zone:active{
+  border-color:rgba(140,100,255,.5);
+  background:rgba(100,60,255,.08);
+}
+.mh-upload-zone .upload-icon{
+  font-size:40px;color:rgba(140,100,255,.4);margin-bottom:8px;
+}
+.mh-upload-zone .upload-text{
+  font-size:11px;color:rgba(180,160,255,.5);letter-spacing:.5px;
+}
+.mh-upload-zone .upload-hint{
+  font-size:9px;color:rgba(140,120,200,.3);margin-top:6px;
+}
+
+.mh-preview-card{
+  background:linear-gradient(135deg,rgba(10,14,30,.9),rgba(6,8,22,.95));
+  border:1px solid rgba(100,60,255,.15);border-radius:10px;
+  padding:16px;margin-top:12px;
+  display:flex;align-items:center;gap:14px;
+}
+.mh-preview-img{
+  width:80px;height:80px;border-radius:10px;
+  object-fit:cover;border:1px solid rgba(100,60,255,.2);
+  background:rgba(0,0,0,.3);
+}
+.mh-preview-info{flex:1;min-width:0;}
+.mh-preview-name{font-size:12px;font-weight:700;color:rgba(220,210,255,.9);}
+.mh-preview-meta{font-size:9px;color:rgba(160,140,200,.4);margin-top:3px;}
+
+.mh-img-pair{
+  display:grid;grid-template-columns:1fr 1fr;gap:12px;
+  margin-top:12px;
+}
+.mh-img-slot{
+  border:2px dashed rgba(140,100,255,.2);
+  border-radius:10px;padding:20px 10px;
+  text-align:center;cursor:pointer;
+  background:rgba(100,60,255,.02);
+  transition:all .25s;
+  min-height:120px;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:8px;
+}
+.mh-img-slot:active{border-color:rgba(140,100,255,.45);background:rgba(100,60,255,.06);}
+.mh-img-slot.filled{border-style:solid;border-color:rgba(0,255,150,.25);background:rgba(0,255,150,.03);}
+.mh-img-slot .slot-label{font-size:9px;color:rgba(180,160,255,.4);letter-spacing:.5px;}
+.mh-img-slot .slot-icon{font-size:28px;color:rgba(140,100,255,.3);}
+.mh-img-slot img{
+  width:80px;height:80px;object-fit:contain;border-radius:6px;
+}
+
+.mh-input-group{margin-bottom:16px;}
+.mh-input-group label{
+  display:block;font-size:9px;letter-spacing:1.5px;
+  color:rgba(180,160,255,.5);text-transform:uppercase;
+  margin-bottom:6px;
+}
+.mh-input{
+  width:100%;box-sizing:border-box;
+  padding:10px 14px;font-size:13px;
+  background:rgba(10,14,30,.8);
+  border:1px solid rgba(100,60,255,.15);border-radius:8px;
+  color:rgba(220,210,255,.9);outline:none;
+  transition:border-color .2s;
+  font-family:inherit;
+}
+.mh-input:focus{border-color:rgba(140,100,255,.4);box-shadow:0 0 12px rgba(100,60,255,.08);}
+.mh-input::placeholder{color:rgba(140,120,200,.25);}
+textarea.mh-input{
+  min-height:100px;resize:vertical;
+  line-height:1.6;font-size:12px;
+}
+
+.mh-btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:12px 28px;border:none;border-radius:10px;
+  font-size:12px;font-weight:700;letter-spacing:1px;
+  cursor:pointer;transition:all .25s;
+  text-transform:uppercase;
+}
+.mh-btn-primary{
+  background:linear-gradient(135deg,#7c3aed,#6d28d9);
+  color:#fff;box-shadow:0 4px 20px rgba(124,58,237,.3);
+}
+.mh-btn-primary:active{transform:scale(.97);box-shadow:0 2px 12px rgba(124,58,237,.4);}
+.mh-btn-secondary{
+  background:rgba(100,60,255,.08);border:1px solid rgba(100,60,255,.2);
+  color:rgba(180,160,255,.7);
+}
+.mh-btn-full{width:100%;margin-top:16px;}
+.mh-btn-success{
+  background:linear-gradient(135deg,#059669,#047857);
+  color:#fff;box-shadow:0 4px 20px rgba(5,150,105,.3);
+}
+.mh-btn-success:active{transform:scale(.97);}
+
+.mh-footer-btns{
+  display:flex;gap:10px;margin-top:24px;
+  padding-top:16px;border-top:1px solid rgba(100,60,255,.1);
+}
+.mh-footer-btns .mh-btn{flex:1;}
+
+/* モデル完了プレビュー */
+.mh-complete-card{
+  background:linear-gradient(135deg,rgba(14,18,36,.95),rgba(8,12,28,.98));
+  border:1px solid rgba(140,100,255,.2);border-radius:16px;
+  padding:24px;text-align:center;
+  box-shadow:0 8px 40px rgba(100,60,255,.1);
+}
+.mh-complete-icon-wrap{
+  width:100px;height:100px;border-radius:50%;
+  border:3px solid rgba(140,100,255,.3);
+  margin:0 auto 16px;overflow:hidden;
+  box-shadow:0 0 30px rgba(140,100,255,.15);
+}
+.mh-complete-icon-wrap img{width:100%;height:100%;object-fit:cover;}
+.mh-complete-name{font-size:18px;font-weight:800;color:rgba(230,220,255,.95);margin-bottom:4px;}
+.mh-complete-desc{font-size:10px;color:rgba(160,140,200,.5);margin-bottom:20px;letter-spacing:.5px;}
+
+/* モデルブラウズ画面 */
+#model-browse-modal{
+  position:fixed;inset:0;z-index:400;
+  display:none;flex-direction:column;
+  background:linear-gradient(160deg,#020610 0%,#060418 50%,#020810 100%);
+  padding-top:env(safe-area-inset-top);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+#model-browse-modal.show{display:flex;}
+
+.mb-search-bar{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 14px;
+  background:rgba(10,14,30,.8);
+  border:1px solid rgba(100,60,255,.12);border-radius:10px;
+  margin:12px 16px;
+}
+.mb-search-bar input{
+  flex:1;background:transparent;border:none;outline:none;
+  font-size:13px;color:rgba(220,210,255,.9);
+  font-family:inherit;
+}
+.mb-search-bar input::placeholder{color:rgba(140,120,200,.3);}
+.mb-search-icon{font-size:18px;color:rgba(140,100,255,.4);}
+
+.mb-grid{
+  flex:1;overflow-y:auto;padding:4px 16px 32px;
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+  align-content:start;
+  -webkit-overflow-scrolling:touch;
+}
+.mb-card{
+  background:linear-gradient(135deg,rgba(10,14,30,.9),rgba(6,8,22,.95));
+  border:1px solid rgba(100,60,255,.12);border-radius:12px;
+  padding:14px 12px;text-align:center;cursor:pointer;
+  transition:all .25s;position:relative;overflow:hidden;
+}
+.mb-card:active{
+  border-color:rgba(140,100,255,.35);
+  box-shadow:0 0 20px rgba(100,60,255,.1);
+  transform:scale(.97);
+}
+.mb-card-icon{
+  width:64px;height:64px;border-radius:50%;
+  border:2px solid rgba(100,60,255,.15);
+  margin:0 auto 8px;overflow:hidden;
+  background:rgba(0,0,0,.3);
+}
+.mb-card-icon img{width:100%;height:100%;object-fit:cover;}
+.mb-card-name{font-size:11px;font-weight:700;color:rgba(220,210,255,.9);margin-bottom:2px;}
+.mb-card-creator{font-size:8px;color:rgba(140,120,200,.4);letter-spacing:.5px;}
+.mb-card-badge{
+  position:absolute;top:6px;right:6px;
+  font-size:7px;padding:2px 6px;border-radius:8px;
+  letter-spacing:.8px;font-weight:600;
+}
+.mb-card-badge.official{
+  background:rgba(255,200,60,.1);border:1px solid rgba(255,200,60,.25);
+  color:rgba(255,200,60,.8);
+}
+.mb-card-badge.user{
+  background:rgba(0,200,255,.06);border:1px solid rgba(0,200,255,.15);
+  color:rgba(0,200,255,.6);
+}
+.mb-empty{
+  grid-column:1/-1;text-align:center;padding:40px 0;
+  color:rgba(140,120,200,.3);font-size:11px;
+  letter-spacing:1px;
+}
+
+/* チャット中モデル切替バナー */
+.model-switch-banner{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 14px;
+  background:linear-gradient(90deg,rgba(100,60,255,.08),rgba(0,200,255,.05));
+  border-bottom:1px solid rgba(100,60,255,.12);
+  cursor:pointer;
+}
+.model-switch-banner img{
+  width:32px;height:32px;border-radius:50%;
+  border:1px solid rgba(100,60,255,.2);
+}
+.model-switch-banner .msb-name{
+  font-size:11px;font-weight:600;color:rgba(200,180,255,.8);flex:1;
+}
+.model-switch-banner .msb-change{
+  font-size:8px;color:rgba(140,100,255,.5);letter-spacing:1px;
+  text-transform:uppercase;
+}
 </style>
 </head>
 <body class="loading">
@@ -2007,6 +2390,15 @@ body.sidemenu-open #miniroom-nav-btn{
         ギフトコード
       </div>
       <div class="sm-divider"></div>
+      <div class="sm-item" onclick="openModelHub()" style="cursor:pointer;">
+        <span class="material-symbols-rounded">person_add</span>
+        モデルの登録
+      </div>
+      <div class="sm-item" onclick="openModelBrowse()" style="cursor:pointer;">
+        <span class="material-symbols-rounded">search</span>
+        モデルを探す
+      </div>
+      <div class="sm-divider"></div>
       <a class="sm-item" href="/help.html" target="_blank">
         <span class="material-symbols-rounded">help</span>
         ヘルプ
@@ -2022,6 +2414,34 @@ body.sidemenu-open #miniroom-nav-btn{
       </a>
     </div>
     <div class="sm-footer">君とV ver 1.0.0</div>
+  </div>
+
+  <!-- モデルHUBモーダル -->
+  <div id="model-hub-modal">
+    <div class="mh-header">
+      <button class="mh-back" onclick="closeModelHub()">←</button>
+      <div class="mh-title">Model Studio</div>
+      <div class="mh-step-indicator" id="mh-steps">
+        <div class="mh-step-dot active" data-step="1"></div>
+        <div class="mh-step-dot" data-step="2"></div>
+        <div class="mh-step-dot" data-step="3"></div>
+        <div class="mh-step-dot" data-step="4"></div>
+      </div>
+    </div>
+    <div class="mh-body" id="mh-body"></div>
+  </div>
+
+  <!-- モデルブラウズモーダル -->
+  <div id="model-browse-modal">
+    <div class="mh-header">
+      <button class="mh-back" onclick="closeModelBrowse()">←</button>
+      <div class="mh-title">Model Search</div>
+    </div>
+    <div class="mb-search-bar">
+      <span class="mb-search-icon material-symbols-rounded">search</span>
+      <input type="text" placeholder="モデル名で検索..." id="mb-search-input" oninput="filterModels()">
+    </div>
+    <div class="mb-grid" id="mb-grid"></div>
   </div>
 
   <!-- シチュエーションパネル -->
@@ -3725,8 +4145,12 @@ async function callAIForStamp(stamp){
   const recentHistory = chatHistory.slice(-4);
 
   const tcS = getTimeContext();
-  const systemPrompt = `あなたはVtuberの来鳥アルエ（ことりあるえ）です。ユーザーが「${stamp.label}」スタンプを送ってきました。
-シチュエーション: ${situation} / 好感度: ${affLv} / 時間帯: ${tcS.label}（${tcS.desc}）
+  // カスタムモデルの場合はモデル名を使う
+  const _activeM = window._getActiveModelForChat ? window._getActiveModelForChat() : null;
+  const _charaName = (_activeM && _activeM.id !== 'arue_default') ? _activeM.name : '来鳥アルエ（ことりあるえ）';
+  const _charaPersonality = (_activeM && _activeM.id !== 'arue_default') ? _activeM.personality : '';
+  const systemPrompt = `あなたは${_charaName === '来鳥アルエ（ことりあるえ）' ? 'Vtuberの来鳥アルエ（ことりあるえ）' : '「'+_charaName+'」'}です。ユーザーが「${stamp.label}」スタンプを送ってきました。
+${_charaPersonality ? '【キャラクター設定】\n'+_charaPersonality+'\n' : ''}シチュエーション: ${situation} / 好感度: ${affLv} / 時間帯: ${tcS.label}（${tcS.desc}）
 ${countNote}
 ${prevNote}
 
@@ -3775,6 +4199,10 @@ JSON形式のみで返答:
    OpenAI API
 ══════════════════════════════ */
 async function callAI(userText){
+  // カスタムモデルが有効な場合はパッチ版を使用
+  if(window._isCustomModelActive && window._isCustomModelActive() && window._patchedCallAI){
+    return window._patchedCallAI(userText);
+  }
   const affLv = affection>=85?'最高（積極的に甘える）':affection>=70?'高（甘え表現あり）':affection>=40?'普通（フレンドリー）':'低（少し控えめ）';
   const recentHistory = chatHistory.slice(-6).map(m=>
     (m.role==='user'?'ユーザー':'アルエ')+': '+m.content
@@ -5308,14 +5736,24 @@ function renderShopList(){
       }
     }
 
+    // ステータスをチップ形式に
+    let statsChips = Object.entries(item.stats).map(([k,v])=>{
+      const isNeg = v < 0;
+      return `<span class="stat-chip${isNeg?' negative':''}">${k.toUpperCase()} ${isNeg?'':'+'}${v}</span>`;
+    }).join('');
+
+    const rarityLabel = {N:'NORMAL',R:'RARE',SR:'S-RARE',SSR:'SS-RARE'}[item.rarity]||item.rarity;
+    const ownedBadge = (owned && !equipped) ? `<div class="shop-owned-badge">✓ OWNED</div>` : '';
+
     div.innerHTML = `
+      ${ownedBadge}
       <div class="shop-item-icon">${item.img
-        ? `<img src="${item.img}" alt="${item.name}" style="width:82px;height:82px;object-fit:contain;filter:drop-shadow(0 2px 8px rgba(0,200,255,.4));border-radius:6px;">`
+        ? `<img src="${item.img}" alt="${item.name}">`
         : item.icon}</div>
       <div class="shop-item-info">
-        <div class="shop-item-name">[${item.rarity}] ${item.name}</div>
+        <div class="shop-item-name"><span style="font-size:8px;opacity:.5;margin-right:4px;letter-spacing:1px;">${rarityLabel}</span>${item.name}</div>
         <div class="shop-item-desc">${item.desc}</div>
-        ${statsText?`<div class="shop-item-stats">${statsText}</div>`:''}
+        ${statsChips?`<div class="shop-item-stats">${statsChips}</div>`:''}
         ${skillText?`<div class="shop-item-skill">${skillText}</div>`:''}
         ${durBarHtml}
       </div>
@@ -5784,6 +6222,441 @@ window.submitGiftCode = function(){
       }
     }
   },{passive:true});
+})();
+
+/* ══════════════════════════════════════════════
+   MODEL HUB - モデル登録プラットフォーム
+══════════════════════════════════════════════ */
+(function(){
+
+// ── ストレージ ──
+const MH_KEY = 'vtchat_models';
+function loadModels(){ try{ return JSON.parse(localStorage.getItem(MH_KEY))||[]; }catch(e){ return []; } }
+function saveModels(arr){ localStorage.setItem(MH_KEY, JSON.stringify(arr)); }
+
+// デフォルトモデル（アルエ）
+function getDefaultModel(){
+  return {
+    id:'arue_default', name:'来鳥アルエ', creator:'公式',
+    icon:'img/arue_chibi.png',
+    sdImg:'img/arue_chibi.png',
+    modelFile:null,
+    personality:`19歳の元気で明るいVtuber女の子。少し天然で時々照れ屋。純粋で正直な性格。
+語尾：「〜だよ」「〜だね」「〜かな」「〜よ！」「〜じゃん！」
+趣味：お菓子作り、アニメ・ゲーム、歌、お散歩
+口グセ：「えへへ」「わ〜！」「もう〜！」「えっ！？」`,
+    greeting:'おはよ！今日も一緒に楽しもうね！',
+    isOfficial:true,
+    createdAt:Date.now()
+  };
+}
+
+function getAllModels(){
+  const user = loadModels();
+  return [getDefaultModel(), ...user];
+}
+
+// ── 登録ウィザード状態 ──
+let _mhStep = 1;
+let _mhDraft = {
+  id:null, name:'', creator:'ユーザー',
+  icon:null, iconName:'', sdImg:null, sdImgName:'',
+  modelFile:null, modelFileName:'',
+  personality:'', greeting:'',
+  isOfficial:false
+};
+
+function resetDraft(){
+  _mhStep = 1;
+  _mhDraft = {
+    id:null, name:'', creator:'ユーザー',
+    icon:null, iconName:'', sdImg:null, sdImgName:'',
+    modelFile:null, modelFileName:'',
+    personality:'', greeting:'',
+    isOfficial:false
+  };
+}
+
+// ── HUBモーダル開閉 ──
+window.openModelHub = function(){
+  toggleSideMenu();
+  resetDraft();
+  document.getElementById('model-hub-modal').classList.add('show');
+  renderStep();
+};
+window.closeModelHub = function(){
+  document.getElementById('model-hub-modal').classList.remove('show');
+};
+
+// ── ステップインジケータ更新 ──
+function updateStepDots(){
+  document.querySelectorAll('#mh-steps .mh-step-dot').forEach(dot=>{
+    const s = parseInt(dot.dataset.step);
+    dot.classList.remove('active','done');
+    if(s === _mhStep) dot.classList.add('active');
+    else if(s < _mhStep) dot.classList.add('done');
+  });
+}
+
+// ── 各ステップ描画 ──
+function renderStep(){
+  updateStepDots();
+  const body = document.getElementById('mh-body');
+
+  if(_mhStep === 1){
+    // STEP1: モデルアップロード
+    body.innerHTML = `
+      <div class="mh-section-title">STEP 1 ─ モデルアップロード</div>
+      <p style="font-size:10px;color:rgba(180,160,255,.4);margin-bottom:16px;line-height:1.6;">
+        Live2Dモデルファイル (.zip/.model3.json) をアップロードしてください。<br>
+        ※現在は設定のみ登録可能です（モデルファイルは任意）
+      </p>
+      <div class="mh-upload-zone" id="mh-upload-model" onclick="document.getElementById('mh-file-model').click()">
+        <div class="upload-icon">📦</div>
+        <div class="upload-text">${_mhDraft.modelFileName || 'タップしてファイルを選択'}</div>
+        <div class="upload-hint">.zip / .model3.json（任意）</div>
+      </div>
+      <input type="file" id="mh-file-model" accept=".zip,.json,.model3.json" style="display:none" onchange="onModelFileSelect(this)">
+      ${_mhDraft.modelFile ? `
+      <div class="mh-preview-card">
+        <div style="font-size:28px;">📦</div>
+        <div class="mh-preview-info">
+          <div class="mh-preview-name">${_mhDraft.modelFileName}</div>
+          <div class="mh-preview-meta">ファイル読み込み済み</div>
+        </div>
+      </div>` : ''}
+      <div class="mh-footer-btns">
+        <button class="mh-btn mh-btn-secondary" onclick="closeModelHub()">キャンセル</button>
+        <button class="mh-btn mh-btn-primary" onclick="mhNext()">次へ →</button>
+      </div>
+    `;
+  } else if(_mhStep === 2){
+    // STEP2: 画像素材登録
+    body.innerHTML = `
+      <div class="mh-section-title">STEP 2 ─ 画像素材登録</div>
+      <p style="font-size:10px;color:rgba(180,160,255,.4);margin-bottom:16px;line-height:1.6;">
+        アイコン画像（正方形推奨）とSDキャラ画像（背景透過PNG）を登録してください。
+      </p>
+      <div class="mh-img-pair">
+        <div class="mh-img-slot ${_mhDraft.icon?'filled':''}" onclick="document.getElementById('mh-file-icon').click()">
+          ${_mhDraft.icon
+            ? `<img src="${_mhDraft.icon}" alt="icon"><div class="slot-label">✓ アイコン</div>`
+            : `<div class="slot-icon">🖼️</div><div class="slot-label">正方形アイコン</div>`}
+        </div>
+        <div class="mh-img-slot ${_mhDraft.sdImg?'filled':''}" onclick="document.getElementById('mh-file-sd').click()">
+          ${_mhDraft.sdImg
+            ? `<img src="${_mhDraft.sdImg}" alt="sd"><div class="slot-label">✓ SDキャラ</div>`
+            : `<div class="slot-icon">🎨</div><div class="slot-label">SDキャラ（透過PNG）</div>`}
+        </div>
+      </div>
+      <input type="file" id="mh-file-icon" accept="image/*" style="display:none" onchange="onImgSelect(this,'icon')">
+      <input type="file" id="mh-file-sd" accept="image/png" style="display:none" onchange="onImgSelect(this,'sdImg')">
+      <div class="mh-footer-btns">
+        <button class="mh-btn mh-btn-secondary" onclick="mhPrev()">← 戻る</button>
+        <button class="mh-btn mh-btn-primary" onclick="mhNext()" ${!_mhDraft.icon?'style="opacity:.5"':''}>次へ →</button>
+      </div>
+    `;
+  } else if(_mhStep === 3){
+    // STEP3: 基本情報
+    body.innerHTML = `
+      <div class="mh-section-title">STEP 3 ─ 基本情報登録</div>
+      <div class="mh-input-group">
+        <label>キャラクター名 *</label>
+        <input class="mh-input" id="mh-name" placeholder="例：来鳥アルエ" value="${_mhDraft.name}" oninput="_mhDraft.name=this.value">
+      </div>
+      <div class="mh-input-group">
+        <label>人格設定 / キャラクタープロンプト *</label>
+        <textarea class="mh-input" id="mh-persona" placeholder="性格、話し方、趣味、口調など...&#10;例：20歳のクールなお姉さん系VTuber。普段は冷静だが、好きなものの話になると一気に饒舌になる。語尾は「〜よ」「〜かしら」" oninput="_mhDraft.personality=this.value">${_mhDraft.personality}</textarea>
+      </div>
+      <div class="mh-input-group">
+        <label>初回あいさつメッセージ</label>
+        <input class="mh-input" id="mh-greeting" placeholder="例：初めまして！よろしくね♪" value="${_mhDraft.greeting}" oninput="_mhDraft.greeting=this.value">
+      </div>
+      <div class="mh-footer-btns">
+        <button class="mh-btn mh-btn-secondary" onclick="mhPrev()">← 戻る</button>
+        <button class="mh-btn mh-btn-primary" onclick="mhNext()" ${!_mhDraft.name?'style="opacity:.5"':''}>次へ →</button>
+      </div>
+    `;
+  } else if(_mhStep === 4){
+    // STEP4: 完了プレビュー
+    body.innerHTML = `
+      <div class="mh-section-title">STEP 4 ─ 登録完了！</div>
+      <div class="mh-complete-card">
+        <div class="mh-complete-icon-wrap">
+          ${_mhDraft.icon ? `<img src="${_mhDraft.icon}">` : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:40px;background:rgba(100,60,255,.1);">🤖</div>'}
+        </div>
+        <div class="mh-complete-name">${_mhDraft.name||'名前未設定'}</div>
+        <div class="mh-complete-desc">${_mhDraft.personality ? _mhDraft.personality.slice(0,60)+'...' : '人格未設定'}</div>
+        ${_mhDraft.sdImg ? `<img src="${_mhDraft.sdImg}" style="max-width:120px;max-height:150px;margin:12px auto;display:block;filter:drop-shadow(0 4px 12px rgba(100,60,255,.3));">` : ''}
+        <button class="mh-btn mh-btn-success mh-btn-full" onclick="saveNewModel()">
+          ✨ 利用開始！
+        </button>
+        <button class="mh-btn mh-btn-secondary mh-btn-full" onclick="mhPrev()" style="margin-top:8px;">← 修正する</button>
+      </div>
+    `;
+  }
+}
+
+window.mhNext = function(){
+  // バリデーション
+  if(_mhStep === 2 && !_mhDraft.icon){
+    showDropToast('アイコン画像を登録してください');
+    return;
+  }
+  if(_mhStep === 3 && !_mhDraft.name.trim()){
+    showDropToast('キャラクター名を入力してください');
+    return;
+  }
+  if(_mhStep === 3 && !_mhDraft.personality.trim()){
+    showDropToast('人格設定を入力してください');
+    return;
+  }
+  if(_mhStep < 4){ _mhStep++; renderStep(); }
+};
+window.mhPrev = function(){
+  if(_mhStep > 1){ _mhStep--; renderStep(); }
+};
+
+// ── ファイル選択ハンドラ ──
+window.onModelFileSelect = function(input){
+  if(!input.files[0]) return;
+  const f = input.files[0];
+  _mhDraft.modelFileName = f.name;
+  const reader = new FileReader();
+  reader.onload = ()=>{ _mhDraft.modelFile = reader.result; renderStep(); };
+  reader.readAsDataURL(f);
+};
+
+window.onImgSelect = function(input, key){
+  if(!input.files[0]) return;
+  const f = input.files[0];
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    _mhDraft[key] = reader.result;
+    _mhDraft[key+'Name'] = f.name;
+    renderStep();
+  };
+  reader.readAsDataURL(f);
+};
+
+// ── モデル保存 ──
+window.saveNewModel = function(){
+  const models = loadModels();
+  const newModel = {
+    id: 'user_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+    name: _mhDraft.name.trim(),
+    creator: _mhDraft.creator || 'ユーザー',
+    icon: _mhDraft.icon,
+    sdImg: _mhDraft.sdImg,
+    modelFile: _mhDraft.modelFile,
+    personality: _mhDraft.personality.trim(),
+    greeting: _mhDraft.greeting.trim() || 'はじめまして！よろしくね！',
+    isOfficial: false,
+    createdAt: Date.now()
+  };
+  models.push(newModel);
+  saveModels(models);
+  showDropToast(`「${newModel.name}」を登録しました！`);
+  closeModelHub();
+  // 自動でチャット切替
+  switchToModel(newModel.id);
+};
+
+// ── モデルブラウズ ──
+window.openModelBrowse = function(){
+  toggleSideMenu();
+  document.getElementById('model-browse-modal').classList.add('show');
+  document.getElementById('mb-search-input').value = '';
+  renderModelGrid();
+};
+window.closeModelBrowse = function(){
+  document.getElementById('model-browse-modal').classList.remove('show');
+};
+
+function renderModelGrid(filter){
+  const grid = document.getElementById('mb-grid');
+  const all = getAllModels();
+  const q = (filter||'').toLowerCase();
+  const filtered = q ? all.filter(m=>m.name.toLowerCase().includes(q)) : all;
+
+  if(!filtered.length){
+    grid.innerHTML = '<div class="mb-empty">モデルが見つかりません</div>';
+    return;
+  }
+
+  grid.innerHTML = filtered.map(m=>{
+    const badge = m.isOfficial
+      ? '<div class="mb-card-badge official">公式</div>'
+      : '<div class="mb-card-badge user">USER</div>';
+    const iconSrc = m.icon || 'img/arue_chibi.png';
+    const isActive = (_activeModelId === m.id);
+    const activeBorder = isActive ? 'border-color:rgba(0,255,150,.4);box-shadow:0 0 16px rgba(0,255,150,.1);' : '';
+    return `
+      <div class="mb-card" onclick="selectModelFromBrowse('${m.id}')" style="${activeBorder}">
+        ${badge}
+        <div class="mb-card-icon"><img src="${iconSrc}" onerror="this.style.display='none';this.parentNode.innerHTML='🤖';"></div>
+        <div class="mb-card-name">${m.name}</div>
+        <div class="mb-card-creator">${m.creator}</div>
+        ${isActive ? '<div style="font-size:7px;color:rgba(0,255,150,.7);margin-top:4px;letter-spacing:1px;">● ACTIVE</div>' : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+window.filterModels = function(){
+  const q = document.getElementById('mb-search-input').value;
+  renderModelGrid(q);
+};
+
+window.selectModelFromBrowse = function(id){
+  switchToModel(id);
+  closeModelBrowse();
+};
+
+// ── モデル切替システム ──
+let _activeModelId = 'arue_default';
+const ACTIVE_MODEL_KEY = 'vtchat_active_model';
+
+// 起動時に復元
+(function(){
+  const saved = localStorage.getItem(ACTIVE_MODEL_KEY);
+  if(saved) _activeModelId = saved;
+})();
+
+function getActiveModel(){
+  const all = getAllModels();
+  return all.find(m=>m.id === _activeModelId) || getDefaultModel();
+}
+
+window.switchToModel = function(id){
+  const all = getAllModels();
+  const model = all.find(m=>m.id === id);
+  if(!model) return;
+
+  _activeModelId = id;
+  localStorage.setItem(ACTIVE_MODEL_KEY, id);
+
+  // チャット履歴リセット
+  chatHistory = [];
+
+  // バナー更新
+  updateModelBanner();
+
+  // アルエに戻す場合はバナー非表示
+  if(id === 'arue_default'){
+    removeModelBanner();
+    showDropToast('アルエに戻りました！');
+  } else {
+    showDropToast(`「${model.name}」に切り替えました！`);
+    // 初回挨拶
+    setTimeout(()=>{
+      if(typeof showCharMessage === 'function'){
+        showCharMessage(model.greeting || 'よろしくね！', 'happy', true);
+      } else if(typeof addAiBubble === 'function'){
+        addAiBubble(model.greeting || 'よろしくね！', 'happy', '#a8d8ff');
+      }
+    }, 500);
+  }
+};
+
+function updateModelBanner(){
+  removeModelBanner();
+  if(_activeModelId === 'arue_default') return;
+  const model = getActiveModel();
+  const banner = document.createElement('div');
+  banner.id = 'model-switch-banner';
+  banner.className = 'model-switch-banner';
+  banner.onclick = ()=>openModelBrowse();
+  banner.innerHTML = `
+    <img src="${model.icon||'img/arue_chibi.png'}" onerror="this.style.display='none'">
+    <div class="msb-name">${model.name}とチャット中</div>
+    <div class="msb-change">切替 ▸</div>
+  `;
+  const chatArea = document.getElementById('chat-area');
+  if(chatArea) chatArea.parentNode.insertBefore(banner, chatArea);
+}
+
+function removeModelBanner(){
+  const old = document.getElementById('model-switch-banner');
+  if(old) old.remove();
+}
+
+// ── callAI の拡張 ──
+// 元のcallAIを拡張して、アクティブモデルの人格を使う
+const _origCallAI = window.callAI || (typeof callAI === 'function' ? callAI : null);
+
+// callAI をオーバーライド（カスタムモデルの場合）
+const _patchedCallAI = async function(userText){
+  if(_activeModelId === 'arue_default' && _origCallAI){
+    return _origCallAI(userText);
+  }
+
+  const model = getActiveModel();
+  const tc = getTimeContext();
+  const recentHistory = chatHistory.slice(-6).map(m=>
+    (m.role==='user'?'ユーザー':model.name)+': '+m.content
+  ).join('\n');
+
+  const systemPrompt = `あなたは「${model.name}」です。以下のキャラクター設定を完全に守り、自然でリアルな会話をしてください。
+
+【キャラクター設定】
+${model.personality}
+
+【現在の時間帯】${tc.label}（${tc.desc}）
+★時間帯に合ったテンション・話題にすること。
+
+【厳守ルール】
+1. 毎回必ず違う内容・表現で返す
+2. 相手の発言の具体的なワードに反応する
+3. 自然な会話の流れで必ず質問や話題を続ける
+
+【直近の会話履歴】
+${recentHistory||'（まだ会話なし）'}
+
+【返答形式 - 重要】
+必ずJSONのみ（前後に余計な文字・マークダウン禁止）。
+約30%の確率で返答を2つに分割して送る。
+- 1つで返す場合: {"text":"セリフ","emotion":"happy|love|shy|sad|surprised|angry|neutral","affection_delta":0}
+- 2つに分ける場合: {"text":"1つ目","text2":"2つ目","emotion":"感情","affection_delta":0}`;
+
+  const resp = await fetch(API_URL,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'gpt-4o',
+      messages:[{role:'system',content:systemPrompt},...chatHistory.slice(-8)],
+      max_tokens:500,
+      temperature:1.0,
+      response_format:{type:'json_object'},
+    }),
+  });
+  if(!resp.ok){
+    const err=await resp.json().catch(()=>({}));
+    throw new Error(err.error?.message||`HTTP ${resp.status}`);
+  }
+  const data=await resp.json();
+  const content=data.choices?.[0]?.message?.content||'{}';
+  try{return JSON.parse(content);}
+  catch(e){return {text:content, emotion:'neutral', affection_delta:0};}
+};
+
+// グローバルにパッチ適用
+if(typeof callAI !== 'undefined'){
+  // callAIはfunction宣言なので直接上書きできないため、
+  // 代わりにfetch呼び出し前にインターセプトするアプローチ
+  // window._useCustomModel フラグで判断
+}
+window._getActiveModelForChat = getActiveModel;
+window._isCustomModelActive = function(){ return _activeModelId !== 'arue_default'; };
+window._patchedCallAI = _patchedCallAI;
+
+// 起動時にバナー復元
+setTimeout(()=>{
+  if(_activeModelId !== 'arue_default'){
+    updateModelBanner();
+  }
+}, 1500);
+
 })();
 
 </script>
