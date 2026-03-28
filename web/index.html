@@ -3167,9 +3167,9 @@ function _setMouth(val){
     try{ live2dModel.internalModel.coreModel.setParameterValueById('ParamMouthOpenY', v); }catch(e){}
   }
   // カスタムLive2Dモデルにも口パクを適用
-  if(_chatCustomL2DModel){
+  if(window._chatCustomL2DModel){
     try{
-      const cm = _chatCustomL2DModel.internalModel.coreModel;
+      const cm = window._chatCustomL2DModel.internalModel.coreModel;
       // 標準パラメータ名を試行（モデルによって異なる場合がある）
       try{ cm.setParameterValueById('ParamMouthOpenY', v); }catch(e){}
       try{ cm.setParameterValueById('ParamMouthOpen', v); }catch(e){}
@@ -4248,10 +4248,10 @@ function setExpression(key){
     }catch(e){console.warn(e);}
   }
   // カスタムLive2Dモデルの表情もセット
-  if(_chatCustomL2DModel){
-    try{ _setCustomExpression(_chatCustomL2DModel, key); }catch(e){ console.warn('Custom expr error:', e); }
+  if(window._chatCustomL2DModel){
+    try{ _setCustomExpression(window._chatCustomL2DModel, key); }catch(e){ console.warn('Custom expr error:', e); }
   }
-  if(!live2dModel && !_chatCustomL2DModel && window._fallbackSetExpr){
+  if(!live2dModel && !window._chatCustomL2DModel && window._fallbackSetExpr){
     window._fallbackSetExpr(key);
   }
 }
@@ -4344,9 +4344,9 @@ function playMotion(){
     try{live2dModel.motion('',0,PIXI.live2d.MotionPriority.NORMAL);}catch(e){}
   }
   // カスタムモデルのモーションも再生
-  if(_chatCustomL2DModel){
+  if(window._chatCustomL2DModel){
     try{
-      const motionDefs = _chatCustomL2DModel.internalModel.settings?.motions || {};
+      const motionDefs = window._chatCustomL2DModel.internalModel.settings?.motions || {};
       const groups = Object.keys(motionDefs);
       // タップ/通常モーションを探す
       const normalGroup = groups.find(g => /tap|touch|normal|hit/i.test(g)) 
@@ -4355,7 +4355,7 @@ function playMotion(){
       if(normalGroup){
         const motions = motionDefs[normalGroup];
         const idx = Math.floor(Math.random() * motions.length);
-        _chatCustomL2DModel.motion(normalGroup, idx, PIXI.live2d.MotionPriority.NORMAL);
+        window._chatCustomL2DModel.motion(normalGroup, idx, PIXI.live2d.MotionPriority.NORMAL);
       }
     }catch(e){ console.warn('Custom motion error:', e); }
   }
@@ -7675,9 +7675,12 @@ window._mhPreviewExpression = function(name){
 };
 
 // ── チャット画面にカスタムLive2Dモデルを表示 ──
-// IndexedDB からZIPデータをロードし、l2d-canvas-area に表示する
+// IndexedDB からZIPデータをロードし、custom-l2d-chat-wrap に表示する
 let _chatCustomL2DApp = null;
 let _chatCustomL2DModel = null;
+// 他のscriptブロックからアクセスできるようwindowに公開
+window._chatCustomL2DModel = null;
+window._chatCustomL2DApp = null;
 
 // IndexedDBのエントリからプリロードデータを作成するヘルパー
 function _preloadFromIDBEntries(idbEntries){
@@ -7855,6 +7858,7 @@ async function _loadCustomLive2DForChat(modelId){
     _chatCustomL2DModel = await PIXI.live2d.Live2DModel.from(settingsJson, {
       onError: (e) => console.error('Chat L2D load error:', e)
     });
+    window._chatCustomL2DModel = _chatCustomL2DModel;
   } finally {
     if(L2DLoader && _origLoaderFn) L2DLoader.middlewares[0] = _origLoaderFn;
   }
@@ -7940,12 +7944,14 @@ function _destroyChatCustomL2D(){
     }
   } catch(e){}
   _chatCustomL2DModel = null;
+  window._chatCustomL2DModel = null;
   try {
     if(_chatCustomL2DApp){
       _chatCustomL2DApp.destroy(true, { children:true, texture:true, baseTexture:true });
     }
   } catch(e){}
   _chatCustomL2DApp = null;
+  window._chatCustomL2DApp = null;
   // カスタムLive2Dコンテナを非表示+クリーンアップ
   const wrap = document.getElementById('custom-l2d-chat-wrap');
   if(wrap){
