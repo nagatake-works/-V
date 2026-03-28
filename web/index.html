@@ -7024,12 +7024,12 @@ function renderStep(){
       </div>
     `;
 
-    // iframeが読み込まれたらZIPから生成済みのBlob URLをpostMessageで送信
+    // iframeが読み込まれたらZIPデータをiframeに送信してLive2Dプレビュー
     const iframe = document.getElementById('mh-preview-iframe');
     if(iframe){
       iframe.addEventListener('load', async ()=>{
         try {
-          console.log('STEP5 iframe loaded, preparing raw data for iframe...');
+          console.log('STEP5 iframe loaded, preparing data for iframe...');
           const zip = _mhDraft.zipFile;
           const entries = _mhDraft.zipEntries;
           if(!zip || !entries || !entries.length){
@@ -7037,34 +7037,38 @@ function renderStep(){
             return;
           }
 
-          // ZIPから全ファイルの生データを抽出してiframeに送信
-          const fileDataMap = {};
-          for(const e of entries){
-            const ab = await e.entry.async('arraybuffer');
-            fileDataMap[e.name] = ab;
-          }
-
           // model3.jsonのパスを取得
           let model3Path = '';
-          for(const name in fileDataMap){
-            if(/\.model3\.json$/i.test(name)){
-              model3Path = name;
+          for(const e of entries){
+            if(/\.model3\.json$/i.test(e.name)){
+              model3Path = e.name;
               break;
             }
           }
-
           if(!model3Path){
             window.showDropToast('.model3.json がZIP内に見つかりません');
             return;
           }
 
+          // ZIPから全ファイルの生データを抽出
+          const fileDataMap = {};
+          const transferList = [];
+          for(const e of entries){
+            const ab = await e.entry.async('arraybuffer');
+            fileDataMap[e.name] = ab;
+            transferList.push(ab);
+          }
+
+          console.log('Sending', Object.keys(fileDataMap).length, 'files via Transferable postMessage, total entries:', entries.length);
+
           setTimeout(()=>{
+            // Transferableとして送信（ゼロコピー、高速）
             iframe.contentWindow.postMessage({
               type: 'l2d-load-raw',
               fileDataMap: fileDataMap,
               model3Path: model3Path,
               name: _mhDraft.name || 'Model'
-            }, '*');
+            }, '*', transferList);
           }, 300);
 
         } catch(e){
