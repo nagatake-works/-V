@@ -4758,6 +4758,31 @@ window.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('aff-num').textContent=affection;
   setBG('daily');
 
+  // ── BGM 最速自動再生（ページ読み込み直後） ──
+  // ブラウザの autoplay ポリシーでブロックされる場合があるため、
+  // ① 即座に試行 → ② ユーザーインタラクション時にリトライ
+  function earlyBGMStart(){
+    if(bgmPlaying) return;
+    const savedOff = localStorage.getItem('bgm_enabled');
+    if(savedOff === 'false') return; // ユーザーが明示的にOFFにしている場合はスキップ
+    startBGM('daily');
+  }
+  earlyBGMStart();
+  // autoplayブロック対策: 最初のタップ/クリック/キーでBGM開始
+  function earlyBGMKick(){
+    earlyBGMStart();
+    document.removeEventListener('pointerdown', earlyBGMKick, true);
+    document.removeEventListener('touchstart', earlyBGMKick, true);
+    document.removeEventListener('click', earlyBGMKick, true);
+    document.removeEventListener('keydown', earlyBGMKick, true);
+  }
+  if(!bgmPlaying){
+    document.addEventListener('pointerdown', earlyBGMKick, {capture:true});
+    document.addEventListener('touchstart', earlyBGMKick, {capture:true});
+    document.addEventListener('click', earlyBGMKick, {capture:true});
+    document.addEventListener('keydown', earlyBGMKick, {capture:true});
+  }
+
   // ── 設定復元（localStorage → index.html UI同期）──
   try{
     // BGM ON/OFF
@@ -7137,72 +7162,75 @@ async function _initMhPreview(){
     const settingsJson = JSON.parse(JSON.stringify(m3Json)); // deep copy
     settingsJson.url = VBASE + 'model3.json';
 
-    // テクスチャ用: <img> 要素で読むので Blob URL が使える（XHR と異なり <img src="blob:..."> は WebView で動作する）
-    // テクスチャだけ Blob URL に書き換え、他のリソースはメモリから直接読む
-    const texBlobUrls = []; // 後で revoke するためのリスト
-    _mhTexBlobUrls = []; // グローバルにも保持
+    // ★ テクスチャ: Blob URL は完全にブロックされるため Data URL (base64) 方式を使用
+    // ArrayBuffer → base64 Data URL に変換し、PIXI キャッシュにプリロード
+    // テクスチャの model3.json 内パスは VBASE+相対パスのまま（カスタムローダーでは提供しない）
+    // PIXI.Texture.from(resolvedUrl) がキャッシュヒットするようにする
+    _mhTexBlobUrls = []; // 不要だがクリーンアップ互換性のため残す
     const fr = settingsJson.FileReferences;
+
+    function arrayBufferToBase64(buffer){
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      const chunk = 8192;
+      for(let i = 0; i < bytes.length; i += chunk){
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunk, bytes.length)));
+      }
+      return btoa(binary);
+    }
+
     if(fr && fr.Textures){
-      const newTextures = [];
-      for(const texPath of fr.Textures){
+      for(let ti = 0; ti < fr.Textures.length; ti++){
+        const texPath = fr.Textures[ti];
         const fullPath = basePath + texPath;
         const ab = dataMap[fullPath] || shortMap[texPath];
-        if(ab){
-          const mime = /\.jpe?g$/i.test(texPath) ? 'image/jpeg' : 'image/png';
-          const blob = new Blob([ab], {type: mime});
-          const blobUrl = URL.createObjectURL(blob);
-          texBlobUrls.push(blobUrl);
-          _mhTexBlobUrls.push(blobUrl);
-          newTextures.push(blobUrl);
-
-          // ★ PIXI テクスチャキャッシュにプリロード ★
-          // WebView で <img src="blob:..."> が失敗する場合の保険
-          // PIXI.Texture.from(blobUrl) が呼ばれた時にキャッシュヒットする
-          try {
-            await new Promise((resolve, reject) => {
-              const img = new Image();
-              img.crossOrigin = 'anonymous';
-              img.onload = () => {
-                try {
-                  const bt = PIXI.BaseTexture.from(img, { resolution: 1 });
-                  PIXI.BaseTexture.addToCache(bt, blobUrl);
-                  const tex = new PIXI.Texture(bt);
-                  PIXI.Texture.addToCache(tex, blobUrl);
-                  console.log('[L2D] Texture cached:', texPath, '(', (ab.byteLength/1024).toFixed(0), 'KB)');
-                } catch(e) {
-                  console.warn('[L2D] Texture cache add failed:', e);
-                }
-                resolve();
-              };
-              img.onerror = (e) => {
-                console.warn('[L2D] Texture img load failed (blob URL may be blocked):', texPath);
-                // フォールバック: createImageBitmap で直接ロード
-                createImageBitmap(blob).then(bmp => {
-                  try {
-                    const bt = PIXI.BaseTexture.from(bmp, { resolution: 1 });
-                    PIXI.BaseTexture.addToCache(bt, blobUrl);
-                    const tex = new PIXI.Texture(bt);
-                    PIXI.Texture.addToCache(tex, blobUrl);
-                    console.log('[L2D] Texture cached via createImageBitmap:', texPath);
-                  } catch(e2) {
-                    console.warn('[L2D] createImageBitmap cache failed:', e2);
-                  }
-                  resolve();
-                }).catch(e2 => {
-                  console.error('[L2D] All texture loading methods failed for:', texPath);
-                  resolve();
-                });
-              };
-              img.src = blobUrl;
-            });
-          } catch(texErr) {
-            console.warn('[L2D] Texture preload error:', texErr);
-          }
-        } else {
-          newTextures.push(texPath); // フォールバック
+        if(!ab){
+          console.warn('[L2D] Texture not found in ZIP:', texPath);
+          continue;
         }
+
+        setStatus('LOADING TEXTURE ' + (ti+1) + '/' + fr.Textures.length + '...');
+        const mime = /\.jpe?g$/i.test(texPath) ? 'image/jpeg' : 'image/png';
+        const b64 = arrayBufferToBase64(ab);
+        const dataUrl = 'data:' + mime + ';base64,' + b64;
+
+        // resolveURL が返す URL をキーにキャッシュ
+        const resolvedUrl = VBASE + texPath;
+
+        await new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => {
+            try {
+              const bt = PIXI.BaseTexture.from(img, { resolution: 1 });
+              PIXI.BaseTexture.addToCache(bt, resolvedUrl);
+              const tex = new PIXI.Texture(bt);
+              PIXI.Texture.addToCache(tex, resolvedUrl);
+              console.log('[L2D] Texture cached (Data URL):', texPath, (ab.byteLength/1024/1024).toFixed(1) + 'MB');
+            } catch(e) {
+              console.warn('[L2D] PIXI cache failed:', texPath, e);
+            }
+            resolve();
+          };
+          img.onerror = () => {
+            console.warn('[L2D] Data URL img load failed, trying createImageBitmap:', texPath);
+            const blob = new Blob([ab], {type: mime});
+            createImageBitmap(blob).then(bmp => {
+              try {
+                const bt = PIXI.BaseTexture.from(bmp, { resolution: 1 });
+                PIXI.BaseTexture.addToCache(bt, resolvedUrl);
+                PIXI.Texture.addToCache(new PIXI.Texture(bt), resolvedUrl);
+                console.log('[L2D] Texture cached via createImageBitmap:', texPath);
+              } catch(e) { console.warn('[L2D] createImageBitmap cache failed:', e); }
+              resolve();
+            }).catch(() => {
+              console.error('[L2D] All texture methods failed:', texPath);
+              resolve();
+            });
+          };
+          img.src = dataUrl;
+        });
       }
-      fr.Textures = newTextures;
+      // fr.Textures のパスはそのまま残す（SDK が resolveURL で VBASE+texPath にするのでキャッシュヒットする）
     }
 
     // URLルックアップ: 仮想URL → ArrayBuffer を返す（テクスチャ以外）
