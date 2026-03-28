@@ -6959,21 +6959,46 @@ function renderStep(){
     // iframeが読み込まれたらZIPから生成済みのBlob URLをpostMessageで送信
     const iframe = document.getElementById('mh-preview-iframe');
     if(iframe){
-      iframe.addEventListener('load', ()=>{
+      iframe.addEventListener('load', async ()=>{
         try {
-          const modelPath = _mhDraft.zipModelPath;
-          console.log('STEP5 iframe loaded, modelPath:', modelPath);
-          if(modelPath){
-            setTimeout(()=>{
-              iframe.contentWindow.postMessage({
-                type: 'l2d-load',
-                modelPath: modelPath,
-                name: _mhDraft.name || 'Model'
-              }, '*');
-            }, 300);
-          } else {
-            window.showDropToast('モデルデータが見つかりません');
+          console.log('STEP5 iframe loaded, preparing raw data for iframe...');
+          const zip = _mhDraft.zipFile;
+          const entries = _mhDraft.zipEntries;
+          if(!zip || !entries || !entries.length){
+            window.showDropToast('ZIPデータが見つかりません');
+            return;
           }
+
+          // ZIPから全ファイルの生データを抽出してiframeに送信
+          const fileDataMap = {};
+          for(const e of entries){
+            const ab = await e.entry.async('arraybuffer');
+            fileDataMap[e.name] = ab;
+          }
+
+          // model3.jsonのパスを取得
+          let model3Path = '';
+          for(const name in fileDataMap){
+            if(/\.model3\.json$/i.test(name)){
+              model3Path = name;
+              break;
+            }
+          }
+
+          if(!model3Path){
+            window.showDropToast('.model3.json がZIP内に見つかりません');
+            return;
+          }
+
+          setTimeout(()=>{
+            iframe.contentWindow.postMessage({
+              type: 'l2d-load-raw',
+              fileDataMap: fileDataMap,
+              model3Path: model3Path,
+              name: _mhDraft.name || 'Model'
+            }, '*');
+          }, 300);
+
         } catch(e){
           console.error('Preview load error:', e);
           window.showDropToast('プレビューの読み込みに失敗: '+e.message);
@@ -7482,17 +7507,27 @@ window.switchToModel = function(id){
     // ── SD画像中央表示（モデルなし時） ──
     const sdDisplay = document.getElementById('sd-char-display');
     const sdCharImg = document.getElementById('sd-char-img');
+    const l2dWrap = document.getElementById('live2d-canvas-wrap');
+    const l2dArea = document.getElementById('l2d-canvas-area');
+    const l2dControls = document.getElementById('l2d-controls');
     if(sdDisplay && sdCharImg){
-      // デフォルトモデル(arue_default)はLive2D使用のため非表示
+      // デフォルトモデル(arue_default)はLive2D使用
       const isDefault = (id === 'arue_default');
-      const hasLive2D = isDefault || model.hasLive2D;
       const hasSdImg = model.sdImg && model.sdImg !== '__stored_externally__';
-      if(!hasLive2D && hasSdImg){
+      if(!isDefault && hasSdImg){
+        // ユーザーモデル: Live2Dキャンバスを非表示にしてSD画像を表示
+        if(l2dWrap) l2dWrap.style.display = 'none';
+        if(l2dArea) l2dArea.style.display = 'none';
+        if(l2dControls) l2dControls.style.display = 'none';
         sdCharImg.src = model.sdImg;
         sdCharImg.onerror = function(){ sdDisplay.classList.remove('show'); };
         sdDisplay.classList.add('show');
-        console.log('SD画像表示: モデルなしモード', model.name);
+        console.log('SD画像表示:', model.name);
       } else {
+        // デフォルトモデル: Live2Dキャンバスを表示、SD画像を非表示
+        if(l2dWrap) l2dWrap.style.display = '';
+        if(l2dArea) l2dArea.style.display = '';
+        if(l2dControls) l2dControls.style.display = '';
         sdDisplay.classList.remove('show');
         sdCharImg.src = '';
       }
