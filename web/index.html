@@ -4063,6 +4063,11 @@ function placeModel(W,H){
   live2dModel.x = W / 2;
   live2dModel.y = H * 0.30 + modelOffsetY;
 }
+// refreshModel: 現在のキャンバスサイズでplaceModelを再呼び出し
+function refreshModel(){
+  if(!pixiApp || !pixiApp.renderer) return;
+  placeModel(pixiApp.renderer.width / pixiApp.renderer.resolution, pixiApp.renderer.height / pixiApp.renderer.resolution);
+}
 
 /* ══════════════════════════════
    Fallback
@@ -8333,34 +8338,8 @@ window.switchToModel = async function(id){
         }
         console.log('Live2D表示: アルエ(デフォルト)');
 
-      } else if(hasLive2D){
-        // ユーザーモデル + Live2Dデータあり
-        // → IndexedDB / _mhDraft からLive2Dモデルをロード
-        if(l2dWrap) l2dWrap.style.display = 'none';
-        if(l2dArea) l2dArea.style.display = '';
-        if(l2dControls) l2dControls.style.display = '';
-        sdDisplay.classList.remove('show');
-        sdCharImg.src = '';
-        // カスタムLive2Dモデルをチャット画面で表示（モデルIDでIndexedDB検索）
-        _loadCustomLive2DForChat(id).catch(e => {
-          console.warn('Custom Live2D load failed, falling back to SD:', e);
-          // フォールバック: SD画像表示
-          if(hasSdImg){
-            if(l2dArea) l2dArea.style.display = 'none';
-            if(l2dWrap) l2dWrap.style.display = 'none';
-            if(l2dControls) l2dControls.style.display = 'none';
-            sdCharImg.src = model.sdImg;
-            sdDisplay.classList.add('show');
-          } else {
-            // SD画像もない場合はアルエのLive2Dを表示
-            if(l2dWrap) l2dWrap.style.display = '';
-            if(l2dArea) l2dArea.style.display = '';
-          }
-        });
-        console.log('Live2D表示試行: カスタムモデル', model.name);
-
       } else if(hasSdImg){
-        // ユーザーモデル: Live2Dなし → SD画像表示
+        // ユーザーモデル（Live2Dあり/なし共通）: まずSD画像を表示
         _destroyChatCustomL2D();
         if(l2dWrap) l2dWrap.style.display = 'none';
         if(l2dArea) l2dArea.style.display = 'none';
@@ -8368,7 +8347,22 @@ window.switchToModel = async function(id){
         sdCharImg.src = model.sdImg;
         sdCharImg.onerror = function(){ sdDisplay.classList.remove('show'); };
         sdDisplay.classList.add('show');
-        console.log('SD画像表示:', model.name);
+        console.log('SD画像表示:', model.name, 'hasLive2D:', hasLive2D);
+
+        // Live2Dデータがある場合はバックグラウンドでロード試行
+        if(hasLive2D){
+          _loadCustomLive2DForChat(id).then(() => {
+            // Live2Dロード成功 → SD画像を隠してLive2Dを表示
+            if(l2dArea) l2dArea.style.display = '';
+            if(l2dControls) l2dControls.style.display = '';
+            sdDisplay.classList.remove('show');
+            sdCharImg.src = '';
+            console.log('Live2Dロード成功 → Live2D表示に切替:', model.name);
+          }).catch(e => {
+            console.warn('Live2Dロード失敗、SD画像を維持:', e.message);
+            // SD画像がすでに表示されているのでそのまま
+          });
+        }
 
       } else {
         // アイコンも画像もない → Live2Dキャンバスを表示（アルエのまま）
@@ -8545,52 +8539,43 @@ setTimeout(()=>{
   if(_activeModelId !== 'arue_default'){
     updateModelBanner();
 
-    // ── 起動時カスタムLive2D復元 ──
+    // ── 起動時カスタムモデル復元 ──
     const activeModel = getActiveModel();
-    if(activeModel && activeModel.hasLive2D){
-      console.log('[Startup] Restoring custom Live2D model:', activeModel.name);
-      // UIをカスタムモデル表示状態にセット
+    const hasSdImg = activeModel && activeModel.sdImg && activeModel.sdImg !== '__stored_externally__';
+    if(activeModel && activeModel.id !== 'arue_default'){
+      console.log('[Startup] Restoring custom model:', activeModel.name, 'hasLive2D:', activeModel.hasLive2D, 'hasSdImg:', !!hasSdImg);
       const sdDisplay = document.getElementById('sd-char-display');
       const sdCharImg = document.getElementById('sd-char-img');
       const l2dWrap = document.getElementById('live2d-canvas-wrap');
       const l2dArea = document.getElementById('l2d-canvas-area');
       const l2dControls = document.getElementById('l2d-controls');
-      if(l2dWrap) l2dWrap.style.display = 'none';
-      if(l2dArea) l2dArea.style.display = '';
-      if(sdDisplay) sdDisplay.classList.remove('show');
 
-      _loadCustomLive2DForChat(_activeModelId).then(() => {
-        console.log('[Startup] Custom Live2D loaded successfully');
-      }).catch(e => {
-        console.warn('[Startup] Custom Live2D restore failed:', e);
-        // フォールバック: SD画像があれば表示
-        const hasSdImg = activeModel.sdImg && activeModel.sdImg !== '__stored_externally__';
-        if(hasSdImg && sdDisplay && sdCharImg){
-          if(l2dArea) l2dArea.style.display = 'none';
-          if(l2dWrap) l2dWrap.style.display = 'none';
-          if(l2dControls) l2dControls.style.display = 'none';
-          sdCharImg.src = activeModel.sdImg;
-          sdDisplay.classList.add('show');
-        } else {
-          // SD画像もない → アルエのLive2Dに戻す
-          if(l2dWrap) l2dWrap.style.display = '';
-          if(l2dArea) l2dArea.style.display = '';
-        }
-      });
-    } else if(activeModel){
-      // hasLive2Dでないカスタムモデル → SD画像表示
-      const hasSdImg = activeModel.sdImg && activeModel.sdImg !== '__stored_externally__';
-      if(hasSdImg){
-        const sdDisplay = document.getElementById('sd-char-display');
-        const sdCharImg = document.getElementById('sd-char-img');
-        const l2dWrap = document.getElementById('live2d-canvas-wrap');
-        const l2dArea = document.getElementById('l2d-canvas-area');
-        const l2dControls = document.getElementById('l2d-controls');
+      // まずSD画像を表示（即座に）
+      if(hasSdImg && sdDisplay && sdCharImg){
         if(l2dWrap) l2dWrap.style.display = 'none';
         if(l2dArea) l2dArea.style.display = 'none';
         if(l2dControls) l2dControls.style.display = 'none';
-        if(sdCharImg) sdCharImg.src = activeModel.sdImg;
-        if(sdDisplay) sdDisplay.classList.add('show');
+        sdCharImg.src = activeModel.sdImg;
+        sdDisplay.classList.add('show');
+      }
+
+      // Live2Dデータがある場合はバックグラウンドでロード試行
+      if(activeModel.hasLive2D){
+        _loadCustomLive2DForChat(_activeModelId).then(() => {
+          console.log('[Startup] Custom Live2D loaded → switching from SD to Live2D');
+          if(l2dArea) l2dArea.style.display = '';
+          if(l2dControls) l2dControls.style.display = '';
+          if(sdDisplay) sdDisplay.classList.remove('show');
+          if(sdCharImg) sdCharImg.src = '';
+        }).catch(e => {
+          console.warn('[Startup] Custom Live2D restore failed, keeping SD:', e.message);
+          // SD画像がすでに表示されているのでそのまま
+          if(!hasSdImg){
+            // SD画像もない → アルエのLive2Dに戻す
+            if(l2dWrap) l2dWrap.style.display = '';
+            if(l2dArea) l2dArea.style.display = '';
+          }
+        });
       }
     }
 

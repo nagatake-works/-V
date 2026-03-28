@@ -4063,6 +4063,11 @@ function placeModel(W,H){
   live2dModel.x = W / 2;
   live2dModel.y = H * 0.30 + modelOffsetY;
 }
+// refreshModel: 現在のキャンバスサイズでplaceModelを再呼び出し
+function refreshModel(){
+  if(!pixiApp || !pixiApp.renderer) return;
+  placeModel(pixiApp.renderer.width / pixiApp.renderer.resolution, pixiApp.renderer.height / pixiApp.renderer.resolution);
+}
 
 /* ══════════════════════════════
    Fallback
@@ -5128,9 +5133,25 @@ const SHOP_ITEMS = {
   ],
 };
 
-/* ── セーブデータ ── */
+/* ── セーブデータ（モデル毎に保持） ── */
+function _getMrDataKey(){
+  // _activeModelId がグローバルに定義されている（後のスクリプトブロック）
+  // まだ定義されていない場合はデフォルトキーを返す
+  const mid = (typeof _activeModelId !== 'undefined') ? _activeModelId : 'arue_default';
+  return 'mrData_' + mid;
+}
 function loadData(){
-  try{ return JSON.parse(localStorage.getItem('mrData')||'null') || defaultData(); }
+  try{
+    const key = _getMrDataKey();
+    let d = JSON.parse(localStorage.getItem(key)||'null');
+    if(!d){
+      // 旧データ(mrData)からの移行（arue_defaultの場合のみ）
+      if(key === 'mrData_arue_default'){
+        d = JSON.parse(localStorage.getItem('mrData')||'null');
+      }
+    }
+    return d || defaultData();
+  }
   catch(e){ return defaultData(); }
 }
 function defaultData(){
@@ -5148,7 +5169,7 @@ function defaultData(){
     vpLastDailyDate:'',          // 毎日200VPの最終付与日
   };
 }
-function saveData(d){ localStorage.setItem('mrData', JSON.stringify(d)); }
+function saveData(d){ localStorage.setItem(_getMrDataKey(), JSON.stringify(d)); }
 
 /* ── 武器耐久度ヘルパー ── */
 function getWeaponMaxDur(weaponId){
@@ -6593,6 +6614,114 @@ window.submitGiftCode = function(){
 })();
 
 /* ══════════════════════════════════════════════
+   Live2D ZIP IndexedDB キャッシュ
+   - モデルのZIPデータをIndexedDBに永続保存
+   - ページリロード後もLive2Dモデルを表示可能にする
+══════════════════════════════════════════════ */
+const _L2DZipDB = (function(){
+  const DB_NAME = 'vtchat_l2d_zip';
+  const DB_VERSION = 1;
+  const STORE_NAME = 'zip_data';
+
+  function openDB(){
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if(!db.objectStoreNames.contains(STORE_NAME)){
+          db.createObjectStore(STORE_NAME, { keyPath: 'modelId' });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  return {
+    // ZIPエントリデータをIndexedDBに保存
+    // entries: [{name, arrayBuffer}] 形式
+    async save(modelId, entries){
+      try {
+        const db = await openDB();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        // ArrayBuffer形式で保存（Blob URLに依存しない）
+        const data = { modelId, entries, savedAt: Date.now() };
+        store.put(data);
+        await new Promise((resolve, reject) => {
+          tx.oncomplete = resolve;
+          tx.onerror = () => reject(tx.error);
+        });
+        db.close();
+        console.log('[L2D ZipDB] Saved', entries.length, 'files for model:', modelId);
+        return true;
+      } catch(e){
+        console.warn('[L2D ZipDB] Save failed:', e);
+        return false;
+      }
+    },
+
+    // IndexedDBからZIPデータを取得
+    async load(modelId){
+      try {
+        const db = await openDB();
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.get(modelId);
+        const result = await new Promise((resolve, reject) => {
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+        db.close();
+        if(result && result.entries){
+          console.log('[L2D ZipDB] Loaded', result.entries.length, 'files for model:', modelId);
+          return result.entries;
+        }
+        return null;
+      } catch(e){
+        console.warn('[L2D ZipDB] Load failed:', e);
+        return null;
+      }
+    },
+
+    // モデルのZIPデータを削除
+    async remove(modelId){
+      try {
+        const db = await openDB();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        store.delete(modelId);
+        await new Promise((resolve, reject) => {
+          tx.oncomplete = resolve;
+          tx.onerror = () => reject(tx.error);
+        });
+        db.close();
+        console.log('[L2D ZipDB] Removed data for model:', modelId);
+      } catch(e){
+        console.warn('[L2D ZipDB] Remove failed:', e);
+      }
+    },
+
+    // モデルのLive2Dデータが存在するか確認
+    async has(modelId){
+      try {
+        const db = await openDB();
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.count(IDBKeyRange.only(modelId));
+        const count = await new Promise((resolve, reject) => {
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+        db.close();
+        return count > 0;
+      } catch(e){ return false; }
+    }
+  };
+})();
+window._L2DZipDB = _L2DZipDB;
+
+/* ══════════════════════════════════════════════
    MODEL HUB - モデル登録プラットフォーム
 ══════════════════════════════════════════════ */
 (function(){
@@ -7417,6 +7546,235 @@ window._mhPreviewExpression = function(name){
   } catch(e){}
 };
 
+// ── チャット画面にカスタムLive2Dモデルを表示 ──
+// IndexedDB からZIPデータをロードし、l2d-canvas-area に表示する
+let _chatCustomL2DApp = null;
+let _chatCustomL2DModel = null;
+
+// IndexedDBのエントリからプリロードデータを作成するヘルパー
+function _preloadFromIDBEntries(idbEntries){
+  // idbEntries: [{name, data(ArrayBuffer)}]
+  let m3Entry = null;
+  for(const e of idbEntries){
+    if(/\.model3\.json$/i.test(e.name)){
+      m3Entry = e;
+      break;
+    }
+  }
+  if(!m3Entry) throw new Error('.model3.json が見つかりません');
+
+  const basePath = m3Entry.name.lastIndexOf('/') >= 0
+    ? m3Entry.name.substring(0, m3Entry.name.lastIndexOf('/') + 1)
+    : '';
+
+  const dataMap = {};
+  const shortMap = {};
+  let totalBytes = 0;
+  for(const e of idbEntries){
+    if(e.name.endsWith('/')) continue;
+    dataMap[e.name] = e.data;
+    if(basePath && e.name.startsWith(basePath)){
+      shortMap[e.name.substring(basePath.length)] = e.data;
+    }
+    shortMap[e.name] = e.data;
+    totalBytes += e.data.byteLength;
+  }
+  console.log('[L2D IDB Preload]', Object.keys(dataMap).length, 'files,', (totalBytes/1024/1024).toFixed(1), 'MB');
+
+  const m3Text = new TextDecoder().decode(dataMap[m3Entry.name]);
+  const m3Json = JSON.parse(m3Text);
+
+  return { m3Json, m3Entry, basePath, dataMap, shortMap, totalBytes };
+}
+
+async function _loadCustomLive2DForChat(modelId){
+  // 古いカスタムモデルを破棄
+  _destroyChatCustomL2D();
+
+  if(!window.PIXI || !PIXI.live2d){
+    throw new Error('Live2D SDK未読み込み');
+  }
+
+  // ── データソース: IndexedDB → _mhDraftフォールバック ──
+  let preloaded = null;
+
+  // 1. IndexedDBからロード試行
+  if(modelId){
+    const idbEntries = await _L2DZipDB.load(modelId);
+    if(idbEntries && idbEntries.length > 0){
+      console.log('[ChatL2D] Loading from IndexedDB for model:', modelId);
+      preloaded = _preloadFromIDBEntries(idbEntries);
+    }
+  }
+
+  // 2. フォールバック: _mhDraft.zipEntries（登録直後のセッション内）
+  if(!preloaded && _mhDraft && _mhDraft.zipEntries && _mhDraft.zipEntries.length > 0){
+    console.log('[ChatL2D] Fallback: loading from _mhDraft.zipEntries');
+    preloaded = await _preloadZipData();
+  }
+
+  if(!preloaded){
+    throw new Error('Live2Dデータなし（IndexedDB/セッション両方なし）');
+  }
+
+  const { m3Json, basePath, dataMap, shortMap } = preloaded;
+
+  const area = document.getElementById('l2d-canvas-area');
+  if(!area) throw new Error('l2d-canvas-area not found');
+
+  const W = area.clientWidth || 300;
+  const H = area.clientHeight || 500;
+
+  _chatCustomL2DApp = new PIXI.Application({
+    width: W, height: H,
+    backgroundAlpha: 0,
+    antialias: true,
+    autoDensity: true,
+    resolution: Math.min(window.devicePixelRatio || 1, 1.5),
+    powerPreference: 'high-performance',
+  });
+  area.appendChild(_chatCustomL2DApp.view);
+  _chatCustomL2DApp.view.style.cssText = 'width:100%;height:100%;display:block;position:absolute;inset:0;z-index:2;';
+
+  // テクスチャプリロード + SDKローダー差替え（_initMhPreview と同じロジック）
+  const VBASE = 'memory://chatmodel/';
+  const settingsJson = JSON.parse(JSON.stringify(m3Json));
+  settingsJson.url = VBASE + 'model3.json';
+
+  function arrayBufferToBase64(buffer){
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    const chunk = 8192;
+    for(let i = 0; i < bytes.length; i += chunk){
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunk, bytes.length)));
+    }
+    return btoa(binary);
+  }
+
+  const fr = settingsJson.FileReferences;
+  if(fr && fr.Textures){
+    for(let ti = 0; ti < fr.Textures.length; ti++){
+      const texPath = fr.Textures[ti];
+      const fullPath = basePath + texPath;
+      const ab = dataMap[fullPath] || shortMap[texPath];
+      if(!ab) continue;
+      const mime = /\.jpe?g$/i.test(texPath) ? 'image/jpeg' : 'image/png';
+      const b64 = arrayBufferToBase64(ab);
+      const dataUrl = 'data:' + mime + ';base64,' + b64;
+      const resolvedUrl = VBASE + texPath;
+      await new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const bt = PIXI.BaseTexture.from(img, { resolution: 1 });
+            PIXI.BaseTexture.addToCache(bt, resolvedUrl);
+            PIXI.Texture.addToCache(new PIXI.Texture(bt), resolvedUrl);
+          } catch(e){}
+          resolve();
+        };
+        img.onerror = () => {
+          const blob = new Blob([ab], {type: mime});
+          createImageBitmap(blob).then(bmp => {
+            try {
+              const bt = PIXI.BaseTexture.from(bmp, { resolution: 1 });
+              PIXI.BaseTexture.addToCache(bt, resolvedUrl);
+              PIXI.Texture.addToCache(new PIXI.Texture(bt), resolvedUrl);
+            } catch(e){}
+            resolve();
+          }).catch(() => resolve());
+        };
+        img.src = dataUrl;
+      });
+    }
+  }
+
+  function lookupData(url){
+    if(url.startsWith(VBASE)){
+      const rel = url.substring(VBASE.length);
+      if(shortMap[rel]) return shortMap[rel];
+      if(dataMap[basePath + rel]) return dataMap[basePath + rel];
+    }
+    if(dataMap[url]) return dataMap[url];
+    if(shortMap[url]) return shortMap[url];
+    try {
+      const decoded = decodeURIComponent(url.startsWith(VBASE) ? url.substring(VBASE.length) : url);
+      if(shortMap[decoded]) return shortMap[decoded];
+      if(dataMap[basePath + decoded]) return dataMap[basePath + decoded];
+    } catch(e){}
+    return null;
+  }
+
+  const L2DLoader = PIXI.live2d.Live2DLoader;
+  let _origLoaderFn = null;
+  if(L2DLoader && L2DLoader.middlewares && L2DLoader.middlewares.length > 0){
+    _origLoaderFn = L2DLoader.middlewares[0];
+    L2DLoader.middlewares[0] = async function(ctx, next){
+      const url = ctx.settings ? ctx.settings.resolveURL(ctx.url) : ctx.url;
+      const ab = lookupData(url);
+      if(ab){
+        ctx.result = (ctx.type === 'json') ? JSON.parse(new TextDecoder().decode(ab)) : ab;
+        return next();
+      }
+      return _origLoaderFn(ctx, next);
+    };
+  }
+
+  try {
+    _chatCustomL2DModel = await PIXI.live2d.Live2DModel.from(settingsJson, {
+      onError: (e) => console.error('Chat L2D load error:', e)
+    });
+  } finally {
+    if(L2DLoader && _origLoaderFn) L2DLoader.middlewares[0] = _origLoaderFn;
+  }
+
+  if(!_chatCustomL2DModel) throw new Error('モデルロード失敗');
+
+  // 元のアルエモデルを非表示に
+  if(typeof pixiApp !== 'undefined' && pixiApp && typeof live2dModel !== 'undefined' && live2dModel){
+    try { pixiApp.stage.removeChild(live2dModel); } catch(e){}
+  }
+
+  _chatCustomL2DApp.stage.addChild(_chatCustomL2DModel);
+  // モデル配置
+  const mW = _chatCustomL2DModel.width, mH = _chatCustomL2DModel.height;
+  const fitScale = Math.min(W * 0.85 / mW, H * 0.85 / mH);
+  _chatCustomL2DModel.scale.set(fitScale);
+  _chatCustomL2DModel.x = W / 2;
+  _chatCustomL2DModel.y = H * 0.55;
+  _chatCustomL2DModel.anchor.set(0.5, 0.5);
+  _chatCustomL2DApp.ticker.maxFPS = 30;
+
+  new ResizeObserver(()=>{
+    if(!_chatCustomL2DApp) return;
+    const nw = area.clientWidth, nh = area.clientHeight;
+    if(nw > 0 && nh > 0){
+      _chatCustomL2DApp.renderer.resize(nw, nh);
+      if(_chatCustomL2DModel){
+        const s = Math.min(nw * 0.85 / mW, nh * 0.85 / mH);
+        _chatCustomL2DModel.scale.set(s);
+        _chatCustomL2DModel.x = nw / 2;
+        _chatCustomL2DModel.y = nh * 0.55;
+      }
+    }
+  }).observe(area);
+}
+
+function _destroyChatCustomL2D(){
+  try {
+    if(_chatCustomL2DModel && _chatCustomL2DApp && _chatCustomL2DApp.stage){
+      _chatCustomL2DApp.stage.removeChild(_chatCustomL2DModel);
+      _chatCustomL2DModel.destroy({ children:true, texture:true, baseTexture:true });
+    }
+  } catch(e){}
+  _chatCustomL2DModel = null;
+  try {
+    if(_chatCustomL2DApp){
+      _chatCustomL2DApp.destroy(true, { children:true, texture:true, baseTexture:true });
+    }
+  } catch(e){}
+  _chatCustomL2DApp = null;
+}
+
 window.mhNext = function(){
   // STEP3ではDOMから最新値を読み取る（クロージャ問題の完全回避）
   if(_mhStep === 3){
@@ -7661,7 +8019,7 @@ window.onImgSelect = function(input, key){
 };
 
 // ── モデル保存（ローディング→チャット画面遷移） ──
-window.saveNewModel = function(){
+window.saveNewModel = async function(){
   const models = loadModels();
   const ufSave = _mhDraft.uploadedFiles;
   const newModel = {
@@ -7684,6 +8042,24 @@ window.saveNewModel = function(){
   if(!newModel.name){
     window.showDropToast('キャラクター名が入力されていません');
     return;
+  }
+
+  // ── Live2D ZIPデータをIndexedDBに永続保存 ──
+  if(newModel.hasLive2D && _mhDraft.zipEntries && _mhDraft.zipEntries.length > 0){
+    try {
+      showDropToast('Live2Dデータを保存中...');
+      const idbEntries = [];
+      for(const e of _mhDraft.zipEntries){
+        if(e.name.endsWith('/')) continue;
+        const ab = await e.entry.async('arraybuffer');
+        idbEntries.push({ name: e.name, data: ab });
+      }
+      await _L2DZipDB.save(newModel.id, idbEntries);
+      console.log('[SaveModel] Live2D ZIP saved to IndexedDB:', idbEntries.length, 'files');
+    } catch(e){
+      console.warn('[SaveModel] Failed to save ZIP to IndexedDB:', e);
+      // 失敗しても登録自体は続行（SD画像フォールバック）
+    }
   }
 
   // Blob URLをクリーンアップ（メモリ解放）
@@ -7718,7 +8094,7 @@ window.saveNewModel = function(){
   // 2秒後にモデル切替＋ローディング非表示
   setTimeout(async ()=>{
     try{
-      switchToModel(newModel.id);
+      await switchToModel(newModel.id);
       await hideModelLoading();
       showDropToast(`「${newModel.name}」を登録しました！`);
     }catch(e){
@@ -7734,6 +8110,8 @@ window.deleteModel = function(id){
   let models = loadModels();
   models = models.filter(m=>m.id !== id);
   saveModels(models);
+  // IndexedDBからLive2Dデータも削除
+  _L2DZipDB.remove(id).catch(()=>{});
   // アクティブモデルが削除された場合はデフォルトに戻す
   if(_activeModelId === id){
     switchToModel('arue_default');
@@ -7826,7 +8204,7 @@ window.selectModelFromBrowse = function(id){
 
   // 2秒後にモデル切替＋ローディング非表示
   setTimeout(async ()=>{
-    switchToModel(id);
+    await switchToModel(id);
     await hideModelLoading();
   }, 2000);
 };
@@ -7846,7 +8224,7 @@ function getActiveModel(){
   return all.find(m=>m.id === _activeModelId) || getDefaultModel();
 }
 
-window.switchToModel = function(id){
+window.switchToModel = async function(id){
   const all = getAllModels();
   const model = all.find(m=>m.id === id);
   if(!model){
@@ -7854,8 +8232,18 @@ window.switchToModel = function(id){
     return;
   }
 
+  // ── ルームデータをモデル切替前に保存 ──
+  try { saveData(D); } catch(e){}
+
   _activeModelId = id;
   localStorage.setItem(ACTIVE_MODEL_KEY, id);
+
+  // ── ルームデータをモデル別にロード ──
+  try {
+    D = loadData();
+    updateStatsUI();
+    updateEquipHud();
+  } catch(e){ console.warn('Room data load error:', e); }
 
   // チャット履歴リセット
   chatHistory = [];
@@ -7890,8 +8278,26 @@ window.switchToModel = function(id){
           this.src = 'img/arue_chibi.png';
           showDropToast('SDキャラ画像の読み込みに失敗しました');
         };
+      } else if(id === 'arue_default'){
+        mcImg.src = 'img/arue_chibi.png';
       } else {
         mcImg.src = 'img/arue_chibi.png';
+      }
+    }
+
+    // ── ROOMのSDキャラ画像も切替 ──
+    const mrSdChara = document.getElementById('mr-sd-chara');
+    if(mrSdChara){
+      const hasSd = model.sdImg && model.sdImg !== '__stored_externally__';
+      if(hasSd){
+        mrSdChara.src = model.sdImg;
+        mrSdChara.onerror = function(){
+          this.src = 'img/sd_chara.png';
+        };
+      } else if(id === 'arue_default'){
+        mrSdChara.src = 'img/sd_chara.png';
+      } else {
+        mrSdChara.src = 'img/sd_chara.png';
       }
     }
 
@@ -7903,27 +8309,63 @@ window.switchToModel = function(id){
     const chatNameEls = document.querySelectorAll('.ai-name');
     chatNameEls.forEach(el=>{ el.textContent = model.name; });
 
-    // ── SD画像中央表示（モデルなし時） ──
+    // ── SD画像中央表示 / Live2D切替 ──
     const sdDisplay = document.getElementById('sd-char-display');
     const sdCharImg = document.getElementById('sd-char-img');
     const l2dWrap = document.getElementById('live2d-canvas-wrap');
     const l2dArea = document.getElementById('l2d-canvas-area');
     const l2dControls = document.getElementById('l2d-controls');
     if(sdDisplay && sdCharImg){
-      // デフォルトモデル(arue_default)はLive2D使用
       const isDefault = (id === 'arue_default');
+      const hasLive2D = model.hasLive2D;
       const hasSdImg = model.sdImg && model.sdImg !== '__stored_externally__';
-      if(!isDefault && hasSdImg){
-        // ユーザーモデル: Live2Dキャンバスを非表示にしてSD画像を表示
+
+      if(isDefault){
+        // デフォルトモデル(アルエ): Live2Dキャンバス表示、SD画像非表示
+        // カスタムLive2Dを破棄
+        _destroyChatCustomL2D();
+        if(l2dWrap) l2dWrap.style.display = '';
+        if(l2dArea) l2dArea.style.display = '';
+        if(l2dControls) l2dControls.style.display = '';
+        sdDisplay.classList.remove('show');
+        sdCharImg.src = '';
+        // Live2Dモデルを元に戻す
+        if(typeof live2dModel !== 'undefined' && live2dModel && typeof pixiApp !== 'undefined' && pixiApp){
+          // アルエのLive2Dを再追加
+          if(!pixiApp.stage.children.includes(live2dModel)){
+            try { pixiApp.stage.addChild(live2dModel); } catch(e){}
+          }
+        }
+        console.log('Live2D表示: アルエ(デフォルト)');
+
+      } else if(hasSdImg){
+        // ユーザーモデル（Live2Dあり/なし共通）: まずSD画像を表示
+        _destroyChatCustomL2D();
         if(l2dWrap) l2dWrap.style.display = 'none';
         if(l2dArea) l2dArea.style.display = 'none';
         if(l2dControls) l2dControls.style.display = 'none';
         sdCharImg.src = model.sdImg;
         sdCharImg.onerror = function(){ sdDisplay.classList.remove('show'); };
         sdDisplay.classList.add('show');
-        console.log('SD画像表示:', model.name);
+        console.log('SD画像表示:', model.name, 'hasLive2D:', hasLive2D);
+
+        // Live2Dデータがある場合はバックグラウンドでロード試行
+        if(hasLive2D){
+          _loadCustomLive2DForChat(id).then(() => {
+            // Live2Dロード成功 → SD画像を隠してLive2Dを表示
+            if(l2dArea) l2dArea.style.display = '';
+            if(l2dControls) l2dControls.style.display = '';
+            sdDisplay.classList.remove('show');
+            sdCharImg.src = '';
+            console.log('Live2Dロード成功 → Live2D表示に切替:', model.name);
+          }).catch(e => {
+            console.warn('Live2Dロード失敗、SD画像を維持:', e.message);
+            // SD画像がすでに表示されているのでそのまま
+          });
+        }
+
       } else {
-        // デフォルトモデル: Live2Dキャンバスを表示、SD画像を非表示
+        // アイコンも画像もない → Live2Dキャンバスを表示（アルエのまま）
         if(l2dWrap) l2dWrap.style.display = '';
         if(l2dArea) l2dArea.style.display = '';
         if(l2dControls) l2dControls.style.display = '';
@@ -8096,6 +8538,60 @@ setTimeout(()=>{
 
   if(_activeModelId !== 'arue_default'){
     updateModelBanner();
+
+    // ── 起動時カスタムモデル復元 ──
+    const activeModel = getActiveModel();
+    const hasSdImg = activeModel && activeModel.sdImg && activeModel.sdImg !== '__stored_externally__';
+    if(activeModel && activeModel.id !== 'arue_default'){
+      console.log('[Startup] Restoring custom model:', activeModel.name, 'hasLive2D:', activeModel.hasLive2D, 'hasSdImg:', !!hasSdImg);
+      const sdDisplay = document.getElementById('sd-char-display');
+      const sdCharImg = document.getElementById('sd-char-img');
+      const l2dWrap = document.getElementById('live2d-canvas-wrap');
+      const l2dArea = document.getElementById('l2d-canvas-area');
+      const l2dControls = document.getElementById('l2d-controls');
+
+      // まずSD画像を表示（即座に）
+      if(hasSdImg && sdDisplay && sdCharImg){
+        if(l2dWrap) l2dWrap.style.display = 'none';
+        if(l2dArea) l2dArea.style.display = 'none';
+        if(l2dControls) l2dControls.style.display = 'none';
+        sdCharImg.src = activeModel.sdImg;
+        sdDisplay.classList.add('show');
+      }
+
+      // Live2Dデータがある場合はバックグラウンドでロード試行
+      if(activeModel.hasLive2D){
+        _loadCustomLive2DForChat(_activeModelId).then(() => {
+          console.log('[Startup] Custom Live2D loaded → switching from SD to Live2D');
+          if(l2dArea) l2dArea.style.display = '';
+          if(l2dControls) l2dControls.style.display = '';
+          if(sdDisplay) sdDisplay.classList.remove('show');
+          if(sdCharImg) sdCharImg.src = '';
+        }).catch(e => {
+          console.warn('[Startup] Custom Live2D restore failed, keeping SD:', e.message);
+          // SD画像がすでに表示されているのでそのまま
+          if(!hasSdImg){
+            // SD画像もない → アルエのLive2Dに戻す
+            if(l2dWrap) l2dWrap.style.display = '';
+            if(l2dArea) l2dArea.style.display = '';
+          }
+        });
+      }
+    }
+
+    // ── ミニキャラとROOMキャラも復元 ──
+    if(activeModel){
+      const mcImg = document.getElementById('mc-img');
+      const mrSdChara = document.getElementById('mr-sd-chara');
+      const hasSd = activeModel.sdImg && activeModel.sdImg !== '__stored_externally__';
+      if(mcImg && hasSd) mcImg.src = activeModel.sdImg;
+      if(mrSdChara && hasSd) mrSdChara.src = activeModel.sdImg;
+      // 名前表示も更新
+      const speechName = document.getElementById('mr-speech-name');
+      if(speechName) speechName.textContent = activeModel.name.toUpperCase();
+      const chatNameEls = document.querySelectorAll('.ai-name');
+      chatNameEls.forEach(el=>{ el.textContent = activeModel.name; });
+    }
   }
 }, 1500);
 
