@@ -211,6 +211,8 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-User-Id")
         self.send_header("X-Frame-Options", "ALLOWALL")
         self.send_header("Content-Security-Policy", "frame-ancestors *")
+        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+        self.send_header("Pragma", "no-cache")
 
     def end_headers(self):
         self._send_cors_headers()
