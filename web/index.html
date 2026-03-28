@@ -505,6 +505,41 @@ html,body{
 @keyframes chibi-bounce{0%,100%{transform:translateY(0)}40%{transform:translateY(-8px)}70%{transform:translateY(3px)}}
 @keyframes chibi-squish{0%{transform:scaleX(1) scaleY(1)}30%{transform:scaleX(1.3) scaleY(.6)}100%{transform:scaleX(1) scaleY(1)}}
 
+/* ── モデルなし時のSD画像中央表示 ── */
+#sd-char-display{
+  position:absolute;
+  left:50%;bottom:28vh;
+  transform:translateX(-50%);
+  z-index:44;
+  pointer-events:auto;
+  display:none;
+  transition:opacity .4s ease;
+}
+#sd-char-display.show{display:block;opacity:1;}
+#sd-char-display img{
+  max-height:52vh;max-width:80vw;
+  filter:drop-shadow(0 8px 32px rgba(140,80,255,.35)) drop-shadow(0 2px 8px rgba(0,0,0,.4));
+  transform-origin:bottom center;
+  animation:sdIdle 3s ease-in-out infinite;
+  cursor:pointer;
+  -webkit-user-select:none;user-select:none;
+}
+@keyframes sdIdle{
+  0%,100%{transform:translateY(0) scale(1);}
+  50%{transform:translateY(-6px) scale(1.01);}
+}
+@keyframes sdBounce{
+  0%{transform:translateY(0) scale(1);}
+  15%{transform:translateY(6px) scaleY(.92) scaleX(1.06);}
+  40%{transform:translateY(-20px) scaleY(1.06) scaleX(.96);}
+  65%{transform:translateY(3px) scaleY(.97) scaleX(1.02);}
+  80%{transform:translateY(-5px) scaleY(1.01) scaleX(.99);}
+  100%{transform:translateY(0) scale(1);}
+}
+#sd-char-display img.bounce{
+  animation:sdBounce .55s cubic-bezier(.34,1.56,.64,1) forwards;
+}
+
 /* Live2D canvas wrap */
 #live2d-canvas-wrap{
   position:absolute;
@@ -1671,7 +1706,7 @@ body.model-browse-open #miniroom-nav-btn{
 .shop-card-top{
   position:relative;
   display:flex;align-items:center;justify-content:center;
-  height:80px;min-height:80px;flex-shrink:0;
+  height:90px;min-height:90px;flex-shrink:0;
   background:linear-gradient(160deg,rgba(0,200,255,.04),rgba(100,60,255,.02),transparent);
   border-bottom:1px solid rgba(0,200,255,.06);
   padding:8px;
@@ -1705,29 +1740,31 @@ body.model-browse-open #miniroom-nav-btn{
 /* 下部：情報エリア */
 .shop-card-body{
   flex:1;min-width:0;
-  padding:8px 10px 6px;
-  display:flex;flex-direction:column;gap:2px;
+  padding:10px 10px 8px;
+  display:flex;flex-direction:column;gap:3px;
+  min-height:100px;
 }
 .shop-card-name{
-  font-size:11px;font-weight:700;color:rgba(230,245,255,.95);
-  line-height:1.3;letter-spacing:.3px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-size:11.5px;font-weight:700;color:rgba(230,245,255,.95);
+  line-height:1.35;letter-spacing:.3px;
+  white-space:normal;overflow:hidden;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
 }
 .shop-card-desc{
-  font-size:8px;color:rgba(0,200,255,.4);line-height:1.4;
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  font-size:9px;color:rgba(0,200,255,.5);line-height:1.5;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
 }
 .shop-card-stats{
-  display:flex;flex-wrap:wrap;gap:3px;margin-top:2px;
+  display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;
 }
 .shop-card-stats .stat-chip{
-  font-size:7px;font-weight:700;color:rgba(0,255,180,.8);
+  font-size:7.5px;font-weight:700;color:rgba(0,255,180,.8);
   background:rgba(0,255,150,.05);border:1px solid rgba(0,255,150,.1);
   border-radius:3px;padding:1px 5px;line-height:1.3;
 }
 .shop-card-stats .stat-chip.negative{color:rgba(255,100,80,.8);background:rgba(255,80,60,.05);border-color:rgba(255,80,60,.1);}
 .shop-card-skill{
-  font-size:7px;color:rgba(180,140,255,.7);
+  font-size:8px;color:rgba(180,140,255,.7);
   background:rgba(140,80,255,.04);border:1px solid rgba(140,80,255,.1);
   border-radius:4px;padding:2px 6px;margin-top:2px;
   line-height:1.3;display:flex;align-items:center;gap:3px;flex-wrap:wrap;
@@ -2658,7 +2695,7 @@ textarea.mh-input{
     <!-- 静的ファイル入力（label forで直接トリガー） -->
     <input type="file" id="mh-file-model-static" accept=".zip,.json,.model3.json,.txt,application/zip,application/x-zip-compressed,application/octet-stream" style="width:0.1px;height:0.1px;opacity:0;overflow:hidden;position:absolute;z-index:-1;">
     <input type="file" id="mh-file-icon-static" accept="image/*" style="width:0.1px;height:0.1px;opacity:0;overflow:hidden;position:absolute;z-index:-1;">
-    <input type="file" id="mh-file-sd-static" accept="image/png,image/*" style="width:0.1px;height:0.1px;opacity:0;overflow:hidden;position:absolute;z-index:-1;">
+    <input type="file" id="mh-file-sd-static" accept="image/png" style="width:0.1px;height:0.1px;opacity:0;overflow:hidden;position:absolute;z-index:-1;">
   </div>
 
   <!-- モデルブラウズモーダル -->
@@ -2735,6 +2772,11 @@ textarea.mh-input{
 
     <!-- タップ用透明オーバーレイ -->
     <div id="tap-overlay" style="position:absolute;inset:0;z-index:5;"></div>
+
+    <!-- モデルなし時のSD画像中央表示 -->
+    <div id="sd-char-display">
+      <img id="sd-char-img" src="" alt="SD Character" draggable="false">
+    </div>
 
     <!-- VPバッジ（ミュートボタン列の左側） -->
     <div id="vp-badge">
@@ -4212,6 +4254,7 @@ function showCharMessage(text,emotion,skipTTS){
   playMotion();
   // AIバブルを追加
   addAiBubble(text, emotion, color);
+  if(window.bounceSDChar) window.bounceSDChar(); // SD画像バウンス
   // TTS読み上げ（skipTTSフラグがない場合）
   if(!skipTTS && text) speakText(text);
 }
@@ -4285,6 +4328,7 @@ async function sendMessage(){
 
   playSE_send();
   addUserBubble(text);
+  if(window.bounceSDChar) window.bounceSDChar(); // SD画像バウンス
   chatHistory.push({role:'user',content:text});
   // 履歴が長くなりすぎないよう制限
   if(chatHistory.length>20) chatHistory=chatHistory.slice(-20);
@@ -6761,7 +6805,7 @@ function renderStep(){
           <span style="font-size:10px;color:rgba(180,160,255,.6);font-weight:600;letter-spacing:.5px;">IMAGE ASSETS</span>
         </div>
         <p style="font-size:12px;color:rgba(210,195,255,.7);line-height:1.8;margin:0;">
-          アイコン画像（正方形推奨）とSDキャラ画像（背景透過PNG推奨）を登録してください。
+          アイコン画像（正方形推奨）とSDキャラ画像（<strong style="color:rgba(255,200,60,.8);">背景透過PNG必須</strong>）を登録してください。
         </p>
       </div>
       <div class="mh-img-pair">
@@ -6773,7 +6817,7 @@ function renderStep(){
         <label for="mh-file-sd-static" class="mh-img-slot ${_mhDraft.sdImg?'filled':''}" style="cursor:pointer;">
           ${_mhDraft.sdImg
             ? `<img src="${_mhDraft.sdImg}" alt="sd"><div class="slot-label"><span class="material-symbols-rounded" style="font-size:12px;vertical-align:-2px;">check</span> SDキャラ</div>`
-            : `<span class="material-symbols-rounded" style="font-size:32px;color:rgba(140,100,255,.3);">emoji_people</span><div class="slot-label">SDキャラ（透過PNG）</div>`}
+            : `<span class="material-symbols-rounded" style="font-size:32px;color:rgba(140,100,255,.3);">emoji_people</span><div class="slot-label">SDキャラ（透過PNG限定）</div>`}
         </label>
       </div>
 
@@ -7176,6 +7220,12 @@ window.onModelFileSelect = async function(input){
 window.onImgSelect = function(input, key){
   if(!input.files[0]) return;
   const f = input.files[0];
+  // SDキャラ画像はPNG限定（背景透過必須）
+  if(key === 'sdImg' && f.type !== 'image/png'){
+    window.showDropToast('SDキャラ画像は背景透過PNGのみ対応です');
+    input.value = '';
+    return;
+  }
   const reader = new FileReader();
   reader.onload = ()=>{
     _mhDraft[key] = reader.result;
@@ -7429,6 +7479,25 @@ window.switchToModel = function(id){
     const chatNameEls = document.querySelectorAll('.ai-name');
     chatNameEls.forEach(el=>{ el.textContent = model.name; });
 
+    // ── SD画像中央表示（モデルなし時） ──
+    const sdDisplay = document.getElementById('sd-char-display');
+    const sdCharImg = document.getElementById('sd-char-img');
+    if(sdDisplay && sdCharImg){
+      // デフォルトモデル(arue_default)はLive2D使用のため非表示
+      const isDefault = (id === 'arue_default');
+      const hasLive2D = isDefault || model.hasLive2D;
+      const hasSdImg = model.sdImg && model.sdImg !== '__stored_externally__';
+      if(!hasLive2D && hasSdImg){
+        sdCharImg.src = model.sdImg;
+        sdCharImg.onerror = function(){ sdDisplay.classList.remove('show'); };
+        sdDisplay.classList.add('show');
+        console.log('SD画像表示: モデルなしモード', model.name);
+      } else {
+        sdDisplay.classList.remove('show');
+        sdCharImg.src = '';
+      }
+    }
+
   }catch(e){
     showDropToast('モデル情報の適用中にエラーが発生しました');
   }
@@ -7453,6 +7522,29 @@ window.switchToModel = function(id){
     }, 500);
   }
 };
+
+// ── SD画像バウンスアニメーション ──
+window.bounceSDChar = function(){
+  const img = document.querySelector('#sd-char-display.show img');
+  if(!img) return;
+  img.classList.remove('bounce');
+  void img.offsetWidth; // reflow強制
+  img.classList.add('bounce');
+  img.addEventListener('animationend', function handler(){
+    img.classList.remove('bounce');
+    img.removeEventListener('animationend', handler);
+  });
+};
+
+// SD画像タップでバウンス
+(function(){
+  const sdDisplay = document.getElementById('sd-char-display');
+  if(sdDisplay){
+    sdDisplay.addEventListener('click', function(){
+      window.bounceSDChar();
+    });
+  }
+})();
 
 function updateModelBanner(){
   removeModelBanner();
