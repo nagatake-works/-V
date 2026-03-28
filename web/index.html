@@ -3166,6 +3166,16 @@ function _setMouth(val){
   if(live2dModel){
     try{ live2dModel.internalModel.coreModel.setParameterValueById('ParamMouthOpenY', v); }catch(e){}
   }
+  // カスタムLive2Dモデルにも口パクを適用
+  if(_chatCustomL2DModel){
+    try{
+      const cm = _chatCustomL2DModel.internalModel.coreModel;
+      // 標準パラメータ名を試行（モデルによって異なる場合がある）
+      try{ cm.setParameterValueById('ParamMouthOpenY', v); }catch(e){}
+      try{ cm.setParameterValueById('ParamMouthOpen', v); }catch(e){}
+      try{ cm.setParameterValueById('PARAM_MOUTH_OPEN_Y', v); }catch(e){}
+    }catch(e){}
+  }
   if(window._fallbackSetMouth) window._fallbackSetMouth(v);
 }
 
@@ -4236,13 +4246,119 @@ function setExpression(key){
       if(name) live2dModel.expression(name);
       else      live2dModel.expression();
     }catch(e){console.warn(e);}
-  }else if(window._fallbackSetExpr){
+  }
+  // カスタムLive2Dモデルの表情もセット
+  if(_chatCustomL2DModel){
+    try{ _setCustomExpression(_chatCustomL2DModel, key); }catch(e){ console.warn('Custom expr error:', e); }
+  }
+  if(!live2dModel && !_chatCustomL2DModel && window._fallbackSetExpr){
     window._fallbackSetExpr(key);
   }
 }
+
+// カスタムLive2Dモデル用の表情セット関数
+function _setCustomExpression(model, emotionKey){
+  if(!model || !model.internalModel) return;
+
+  // 利用可能な表情リストを取得
+  const defs = model.internalModel.settings?.expressions;
+  if(!defs || defs.length === 0){
+    // 表情定義がない場合はパラメータ直接操作でフォールバック
+    _setCustomExpressionByParams(model, emotionKey);
+    return;
+  }
+
+  // 表情名のリスト
+  const exprNames = defs.map(d => (d.Name || d.name || '').toLowerCase());
+
+  // emotionKeyから表情名へのマッピング（よく使われる名前パターン）
+  const CUSTOM_EXPR_MAP = {
+    happy:     ['happy', 'smile', 'joy', 'h', 'star', 'shine'],
+    love:      ['love', 'heart', 'ai', 'doki'],
+    shy:       ['shy', 'red', 'cheek', 'blush', 'hua'],
+    sad:       ['sad', 'cry', 'cb', 'tear'],
+    surprised: ['surprised', 'surprise', 'sweat', 'flash', 'sq'],
+    angry:     ['angry', 'anger', 'm', 'mad'],
+    neutral:   ['neutral', 'normal', 'default', 'idle']
+  };
+
+  const candidates = CUSTOM_EXPR_MAP[emotionKey] || [];
+  let matched = null;
+
+  // 候補名と表情定義をマッチング
+  for(const candidate of candidates){
+    const idx = exprNames.findIndex(n => n.includes(candidate));
+    if(idx >= 0){
+      matched = defs[idx].Name || defs[idx].name;
+      break;
+    }
+  }
+
+  if(matched){
+    try{ model.expression(matched); }catch(e){}
+  } else if(emotionKey === 'neutral'){
+    // ニュートラルの場合はリセット
+    try{ model.expression(); }catch(e){}
+  } else {
+    // マッチしない場合もパラメータ操作を試みる
+    _setCustomExpressionByParams(model, emotionKey);
+  }
+}
+
+// パラメータ直接操作による表情変更（表情ファイルがないモデル用）
+function _setCustomExpressionByParams(model, emotionKey){
+  if(!model || !model.internalModel || !model.internalModel.coreModel) return;
+  const cm = model.internalModel.coreModel;
+
+  // パラメータ値マッピング
+  const PARAM_MAP = {
+    happy:     { EyeSmile: 1, Mouth: 0.6 },
+    love:      { EyeSmile: 0.8, Cheek: 1 },
+    shy:       { EyeSmile: 0.5, Cheek: 1, EyeY: -0.3 },
+    sad:       { EyeSmile: 0, BrowY: -0.5, Mouth: 0.3 },
+    surprised: { EyeOpen: 1.2, BrowY: 0.5, MouthOpen: 0.8 },
+    angry:     { BrowAngle: -0.8, EyeSmile: 0 },
+    neutral:   { EyeSmile: 0, Cheek: 0, BrowY: 0, BrowAngle: 0 }
+  };
+
+  const params = PARAM_MAP[emotionKey] || PARAM_MAP.neutral;
+
+  // 各パラメータをセット（存在しないパラメータは無視される）
+  const trySet = (ids, val) => {
+    for(const id of ids){
+      try{ cm.setParameterValueById(id, val); }catch(e){}
+    }
+  };
+
+  if(params.EyeSmile !== undefined) trySet(['ParamEyeSmile', 'PARAM_EYE_SMILE'], params.EyeSmile);
+  if(params.Cheek !== undefined) trySet(['ParamCheek', 'PARAM_CHEEK'], params.Cheek);
+  if(params.EyeY !== undefined) trySet(['ParamEyeBallY', 'PARAM_EYE_BALL_Y'], params.EyeY);
+  if(params.BrowY !== undefined) trySet(['ParamBrowLY', 'ParamBrowRY', 'PARAM_BROW_L_Y', 'PARAM_BROW_R_Y'], params.BrowY);
+  if(params.BrowAngle !== undefined) trySet(['ParamBrowLAngle', 'ParamBrowRAngle'], params.BrowAngle);
+  if(params.Mouth !== undefined) trySet(['ParamMouthForm', 'PARAM_MOUTH_FORM'], params.Mouth);
+  if(params.MouthOpen !== undefined) trySet(['ParamMouthOpenY', 'PARAM_MOUTH_OPEN_Y'], params.MouthOpen);
+  if(params.EyeOpen !== undefined) trySet(['ParamEyeLOpen', 'ParamEyeROpen', 'PARAM_EYE_L_OPEN', 'PARAM_EYE_R_OPEN'], params.EyeOpen);
+}
 function playMotion(){
-  if(!live2dModel) return;
-  try{live2dModel.motion('',0,PIXI.live2d.MotionPriority.NORMAL);}catch(e){}
+  if(live2dModel){
+    try{live2dModel.motion('',0,PIXI.live2d.MotionPriority.NORMAL);}catch(e){}
+  }
+  // カスタムモデルのモーションも再生
+  if(_chatCustomL2DModel){
+    try{
+      const motionDefs = _chatCustomL2DModel.internalModel.settings?.motions || {};
+      const groups = Object.keys(motionDefs);
+      // タップ/通常モーションを探す
+      const normalGroup = groups.find(g => /tap|touch|normal|hit/i.test(g)) 
+                       || groups.find(g => !/idle/i.test(g))
+                       || groups[0];
+      if(normalGroup){
+        const motions = motionDefs[normalGroup];
+        const idx = Math.floor(Math.random() * motions.length);
+        _chatCustomL2DModel.motion(normalGroup, idx, PIXI.live2d.MotionPriority.NORMAL);
+      }
+    }catch(e){ console.warn('Custom motion error:', e); }
+  }
 }
 
 /* ══════════════════════════════
@@ -7745,6 +7861,35 @@ async function _loadCustomLive2DForChat(modelId){
 
   if(!_chatCustomL2DModel) throw new Error('モデルロード失敗');
 
+  // ── モデル能力を解析・ログ出力 ──
+  try{
+    const im = _chatCustomL2DModel.internalModel;
+    // 利用可能な表情をログ
+    const exprDefs = im.settings?.expressions || [];
+    if(exprDefs.length > 0){
+      console.log('[ChatL2D] Available expressions:', exprDefs.map(e => e.Name || e.name));
+    } else {
+      console.log('[ChatL2D] No expression definitions found');
+    }
+    // 利用可能なモーショングループをログ
+    const motionDefs = im.settings?.motions || {};
+    const motionGroups = Object.keys(motionDefs);
+    if(motionGroups.length > 0){
+      console.log('[ChatL2D] Available motion groups:', motionGroups);
+    }
+    // 利用可能なパラメータをログ
+    if(im.coreModel){
+      const paramCount = im.coreModel.getParameterCount?.() || 0;
+      const paramIds = [];
+      for(let i = 0; i < paramCount; i++){
+        try{ paramIds.push(im.coreModel.getParameterId?.(i)); }catch(e){}
+      }
+      if(paramIds.length > 0){
+        console.log('[ChatL2D] Available params:', paramIds.filter(Boolean));
+      }
+    }
+  }catch(e){ console.warn('[ChatL2D] Model analysis error:', e); }
+
   // 元のアルエモデルを非表示に
   if(typeof pixiApp !== 'undefined' && pixiApp && typeof live2dModel !== 'undefined' && live2dModel){
     try { pixiApp.stage.removeChild(live2dModel); } catch(e){}
@@ -7759,6 +7904,18 @@ async function _loadCustomLive2DForChat(modelId){
   _chatCustomL2DModel.y = H * 0.55;
   _chatCustomL2DModel.anchor.set(0.5, 0.5);
   _chatCustomL2DApp.ticker.maxFPS = 30;
+
+  // ── アイドルモーション自動再生 ──
+  try{
+    const motionDefs = _chatCustomL2DModel.internalModel.settings?.motions || {};
+    const motionGroups = Object.keys(motionDefs);
+    // Idle系モーショングループを探す
+    const idleGroup = motionGroups.find(g => /idle/i.test(g)) || motionGroups[0];
+    if(idleGroup){
+      console.log('[ChatL2D] Starting idle motion:', idleGroup);
+      _chatCustomL2DModel.motion(idleGroup, 0, PIXI.live2d.MotionPriority.IDLE);
+    }
+  }catch(e){ console.warn('[ChatL2D] Idle motion error:', e); }
 
   new ResizeObserver(()=>{
     if(!_chatCustomL2DApp) return;
