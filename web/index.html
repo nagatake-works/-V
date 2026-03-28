@@ -7029,9 +7029,47 @@ function renderStep(){
 }
 
 // ── STEP5 Live2Dプレビュー（親ページ内で直接描画） ──
+// ★ Blob URL や fetch/XHR を一切使わず、
+//    Live2D SDK のローダーを直接差し替えて
+//    ZIP エントリのメモリ上データから読み込む方式
 let _mhPreviewApp = null;
 let _mhPreviewModel = null;
 let _mhPreviewScale = 1.0;
+let _mhTexBlobUrls = []; // テクスチャ用Blob URL（破棄時にrevoke）
+
+// ZIP エントリから全ファイルを ArrayBuffer でプリロード
+async function _preloadZipData(){
+  const entries = _mhDraft.zipEntries || [];
+  const m3Entry = entries.find(e => /\.model3\.json$/i.test(e.name));
+  if(!m3Entry) throw new Error('.model3.json が見つかりません');
+
+  const basePath = m3Entry.name.lastIndexOf('/') >= 0
+    ? m3Entry.name.substring(0, m3Entry.name.lastIndexOf('/') + 1)
+    : '';
+
+  // 全ファイルの ArrayBuffer を取得（ファイル名→ArrayBufferマップ）
+  const dataMap = {};  // ファイル名(ZIP内パス) → ArrayBuffer
+  const shortMap = {}; // basePath除去後の相対パス → ArrayBuffer
+  let totalBytes = 0;
+  for(const e of entries){
+    if(e.name.endsWith('/')) continue; // ディレクトリスキップ
+    const ab = await e.entry.async('arraybuffer');
+    dataMap[e.name] = ab;
+    // basePath を除去した相対パス
+    if(basePath && e.name.startsWith(basePath)){
+      shortMap[e.name.substring(basePath.length)] = ab;
+    }
+    shortMap[e.name] = ab;
+    totalBytes += ab.byteLength;
+  }
+  console.log('[L2D Preload]', Object.keys(dataMap).length, 'files,', (totalBytes/1024/1024).toFixed(1), 'MB');
+
+  // model3.json のテキストを取得
+  const m3Text = new TextDecoder().decode(dataMap[m3Entry.name]);
+  const m3Json = JSON.parse(m3Text);
+
+  return { m3Json, m3Entry, basePath, dataMap, shortMap, totalBytes };
+}
 
 async function _initMhPreview(){
   const area = document.getElementById('mh-preview-area');
@@ -7041,6 +7079,7 @@ async function _initMhPreview(){
   function setStatus(text, color){
     if(!statusEl) return;
     statusEl.innerHTML = `<span style="background:rgba(0,0,0,.6);color:${color||'rgba(0,200,255,.7)'};padding:4px 16px;border-radius:12px;font-size:11px;font-family:monospace;">${text}</span>`;
+    statusEl.style.opacity = '1';
   }
 
   try {
@@ -7050,18 +7089,22 @@ async function _initMhPreview(){
       return;
     }
 
-    // zipModelPathは親ページで生成済み（有効なBlob URL）
-    const modelUrl = _mhDraft.zipModelPath;
-    if(!modelUrl){
+    if(!_mhDraft.zipEntries || _mhDraft.zipEntries.length === 0){
       setStatus('LOAD FAILED', 'rgba(255,80,80,.8)');
-      window.showDropToast('モデルデータが見つかりません');
+      window.showDropToast('ZIPデータが見つかりません');
       return;
     }
 
-    setStatus('INITIALIZING...');
+    setStatus('EXTRACTING ZIP DATA...');
 
     // 古いプレビューを破棄
     _destroyMhPreview();
+
+    // ── Phase 1: ZIPから全データをメモリにプリロード ──
+    const preloaded = await _preloadZipData();
+    const { m3Json, basePath, dataMap, shortMap } = preloaded;
+
+    setStatus('INITIALIZING PIXI...');
 
     const W = area.clientWidth || 300;
     const H = area.clientHeight || 400;
@@ -7078,112 +7121,183 @@ async function _initMhPreview(){
     _mhPreviewApp.view.style.cssText = 'width:100%;height:100%;display:block;position:absolute;inset:0;';
 
     setStatus('LOADING MODEL...');
-    console.log('Loading Live2D from zipModelPath:', modelUrl);
 
-    // ── Blob URLへのfetchが制限される環境対策 ──
-    // fetch/XMLHttpRequestをモンキーパッチして、Blob URLリクエストを
-    // 直接Blobデータに変換する（WebViewのセキュリティ制限回避）
-    const blobUrlMap = _mhDraft.blobUrls || {};
-    const allBlobUrls = new Set(Object.values(blobUrlMap));
-    allBlobUrls.add(modelUrl); // zipModelPath自体も
+    // ── Phase 2: Live2D SDK ローダーを直接差し替え ──
+    // cubism4.min.js 内部の仕組み:
+    //   ve.middlewares = [ye.loader]  (ye.loader = XHR ベース)
+    //   Live2DModel.from(source) → setupLive2DModel → middlewares → loader
+    //   loader(ctx) が ctx.url を XHR で取得 → ctx.result に結果格納
+    //
+    // これを「メモリ上のデータから直接返す」ローダーに置換する。
+    // 対象URL (model3.json のパス書換え後) → shortMap で検索 → 見つかれば ArrayBuffer を返す
 
-    const _origFetch = window.fetch;
-    const _origXHROpen = XMLHttpRequest.prototype.open;
-    const _origXHRSend = XMLHttpRequest.prototype.send;
+    // model3.json の FileReferences パスを仮想パスに変換
+    // 仮想ベースURL: "memory://model/"
+    const VBASE = 'memory://model/';
+    const settingsJson = JSON.parse(JSON.stringify(m3Json)); // deep copy
+    settingsJson.url = VBASE + 'model3.json';
 
-    // Blob URLからBlobを取得するヘルパー（同一コンテキスト内では有効）
-    async function blobFromUrl(url){
-      // blobUrlMapの逆引き：URL → ファイル名 → 元データから再生成
-      for(const [name, burl] of Object.entries(blobUrlMap)){
-        if(burl === url){
-          // zipEntriesから再取得
-          const entry = (_mhDraft.zipEntries||[]).find(e => e.name === name);
-          if(entry){
-            const data = await entry.entry.async('arraybuffer');
-            let mime = 'application/octet-stream';
-            if(/\.png$/i.test(name)) mime = 'image/png';
-            else if(/\.jpe?g$/i.test(name)) mime = 'image/jpeg';
-            else if(/\.json$/i.test(name)) mime = 'application/json';
-            else if(/\.moc3$/i.test(name)) mime = 'application/octet-stream';
-            return new Blob([data], {type: mime});
+    // テクスチャ用: <img> 要素で読むので Blob URL が使える（XHR と異なり <img src="blob:..."> は WebView で動作する）
+    // テクスチャだけ Blob URL に書き換え、他のリソースはメモリから直接読む
+    const texBlobUrls = []; // 後で revoke するためのリスト
+    _mhTexBlobUrls = []; // グローバルにも保持
+    const fr = settingsJson.FileReferences;
+    if(fr && fr.Textures){
+      const newTextures = [];
+      for(const texPath of fr.Textures){
+        const fullPath = basePath + texPath;
+        const ab = dataMap[fullPath] || shortMap[texPath];
+        if(ab){
+          const mime = /\.jpe?g$/i.test(texPath) ? 'image/jpeg' : 'image/png';
+          const blob = new Blob([ab], {type: mime});
+          const blobUrl = URL.createObjectURL(blob);
+          texBlobUrls.push(blobUrl);
+          _mhTexBlobUrls.push(blobUrl);
+          newTextures.push(blobUrl);
+
+          // ★ PIXI テクスチャキャッシュにプリロード ★
+          // WebView で <img src="blob:..."> が失敗する場合の保険
+          // PIXI.Texture.from(blobUrl) が呼ばれた時にキャッシュヒットする
+          try {
+            await new Promise((resolve, reject) => {
+              const img = new Image();
+              img.crossOrigin = 'anonymous';
+              img.onload = () => {
+                try {
+                  const bt = PIXI.BaseTexture.from(img, { resolution: 1 });
+                  PIXI.BaseTexture.addToCache(bt, blobUrl);
+                  const tex = new PIXI.Texture(bt);
+                  PIXI.Texture.addToCache(tex, blobUrl);
+                  console.log('[L2D] Texture cached:', texPath, '(', (ab.byteLength/1024).toFixed(0), 'KB)');
+                } catch(e) {
+                  console.warn('[L2D] Texture cache add failed:', e);
+                }
+                resolve();
+              };
+              img.onerror = (e) => {
+                console.warn('[L2D] Texture img load failed (blob URL may be blocked):', texPath);
+                // フォールバック: createImageBitmap で直接ロード
+                createImageBitmap(blob).then(bmp => {
+                  try {
+                    const bt = PIXI.BaseTexture.from(bmp, { resolution: 1 });
+                    PIXI.BaseTexture.addToCache(bt, blobUrl);
+                    const tex = new PIXI.Texture(bt);
+                    PIXI.Texture.addToCache(tex, blobUrl);
+                    console.log('[L2D] Texture cached via createImageBitmap:', texPath);
+                  } catch(e2) {
+                    console.warn('[L2D] createImageBitmap cache failed:', e2);
+                  }
+                  resolve();
+                }).catch(e2 => {
+                  console.error('[L2D] All texture loading methods failed for:', texPath);
+                  resolve();
+                });
+              };
+              img.src = blobUrl;
+            });
+          } catch(texErr) {
+            console.warn('[L2D] Texture preload error:', texErr);
           }
+        } else {
+          newTextures.push(texPath); // フォールバック
         }
       }
-      // zipModelPath（書き換え済みmodel3.json）
-      if(url === modelUrl){
-        // model3.jsonを再生成
-        const m3Entry = (_mhDraft.zipEntries||[]).find(e => /\.model3\.json$/i.test(e.name));
-        if(m3Entry){
-          const basePath = m3Entry.name.lastIndexOf('/') >= 0 ? m3Entry.name.substring(0, m3Entry.name.lastIndexOf('/') + 1) : '';
-          const m3Text = await m3Entry.entry.async('text');
-          const m3Json = JSON.parse(m3Text);
-          const fr = m3Json.FileReferences;
-          if(fr){
-            if(fr.Moc) fr.Moc = blobUrlMap[basePath + fr.Moc] || fr.Moc;
-            if(fr.Textures) fr.Textures = fr.Textures.map(t => blobUrlMap[basePath + t] || t);
-            if(fr.Physics) fr.Physics = blobUrlMap[basePath + fr.Physics] || fr.Physics;
-            if(fr.DisplayInfo) fr.DisplayInfo = blobUrlMap[basePath + fr.DisplayInfo] || fr.DisplayInfo;
-            if(fr.Expressions) fr.Expressions = fr.Expressions.map(exp => ({...exp, File: blobUrlMap[basePath + exp.File] || exp.File}));
-            if(fr.Motions){ for(const g in fr.Motions){ fr.Motions[g] = fr.Motions[g].map(m => ({...m, File: blobUrlMap[basePath + m.File] || m.File, Sound: m.Sound ? (blobUrlMap[basePath + m.Sound] || m.Sound) : undefined})); } }
-          }
-          return new Blob([JSON.stringify(m3Json)], {type: 'application/json'});
-        }
+      fr.Textures = newTextures;
+    }
+
+    // URLルックアップ: 仮想URL → ArrayBuffer を返す（テクスチャ以外）
+    function lookupData(url){
+      // "memory://model/xxx" → "xxx"
+      if(url.startsWith(VBASE)){
+        const rel = url.substring(VBASE.length);
+        if(shortMap[rel]) return shortMap[rel];
+        if(dataMap[basePath + rel]) return dataMap[basePath + rel];
       }
+      if(dataMap[url]) return dataMap[url];
+      if(shortMap[url]) return shortMap[url];
+      try {
+        const decoded = decodeURIComponent(url.startsWith(VBASE) ? url.substring(VBASE.length) : url);
+        if(shortMap[decoded]) return shortMap[decoded];
+        if(dataMap[basePath + decoded]) return dataMap[basePath + decoded];
+      } catch(e){}
       return null;
     }
 
-    // fetchをパッチ
-    window.fetch = async function(input, init){
-      const url = (typeof input === 'string') ? input : (input && input.url) ? input.url : '';
-      if(url.startsWith('blob:')){
-        try {
-          const blob = await blobFromUrl(url);
-          if(blob) return new Response(blob, {status:200, statusText:'OK'});
-        } catch(e){ console.warn('blob fetch intercept failed:', e); }
-      }
-      return _origFetch.call(window, input, init);
-    };
+    setStatus('BUILDING MODEL...');
 
-    // XMLHttpRequestもパッチ（cubism SDKが使う場合）
-    XMLHttpRequest.prototype.open = function(method, url, ...rest){
-      this._mhBlobUrl = (typeof url === 'string' && url.startsWith('blob:')) ? url : null;
-      return _origXHROpen.call(this, method, url, ...rest);
-    };
-    XMLHttpRequest.prototype.send = function(body){
-      if(this._mhBlobUrl){
-        const xhr = this;
-        blobFromUrl(this._mhBlobUrl).then(blob => {
-          if(blob){
-            const reader = new FileReader();
-            reader.onload = ()=>{
-              Object.defineProperty(xhr, 'status', {get:()=>200});
-              Object.defineProperty(xhr, 'readyState', {get:()=>4});
-              Object.defineProperty(xhr, 'response', {get:()=>reader.result});
-              Object.defineProperty(xhr, 'responseText', {get:()=>{ try{return new TextDecoder().decode(reader.result);}catch(e){return '';} }});
-              if(xhr.onload) xhr.onload();
-              xhr.dispatchEvent(new Event('load'));
-            };
-            if(xhr.responseType === 'arraybuffer') reader.readAsArrayBuffer(blob);
-            else reader.readAsArrayBuffer(blob);
+    // ── Live2D SDK のローダーを直接差し替え ──
+    // PIXI.live2d の公開API:
+    //   Live2DLoader (= ve) — 個別リソース読込。ve.middlewares = [ye.loader]
+    //   XHRLoader (= ye) — XHR ベースのローダー
+    //   Live2DFactory (= Te) — モデルパイプライン。Te.live2DModelMiddlewares = [Pe,Ce,Se,be,we,Ie]
+    //
+    // 個別ファイル(moc3, テクスチャ, physics等)は ve.load() → ye.loader (XHR) で取得される。
+    // ★ ve.middlewares[0] をカスタムに差し替えれば、XHR を完全にバイパスできる。
+
+    const L2DLoader = PIXI.live2d.Live2DLoader;
+    const XHRLoaderRef = PIXI.live2d.XHRLoader;
+    let _origLoaderFn = null;
+
+    if(L2DLoader && L2DLoader.middlewares && L2DLoader.middlewares.length > 0){
+      _origLoaderFn = L2DLoader.middlewares[0];
+      // カスタムローダー: URL をメモリデータに解決
+      L2DLoader.middlewares[0] = async function(ctx, next){
+        const url = ctx.settings ? ctx.settings.resolveURL(ctx.url) : ctx.url;
+        console.log('[L2D CustomLoader] Request:', url, 'type:', ctx.type);
+        const ab = lookupData(url);
+        if(ab){
+          if(ctx.type === 'json'){
+            ctx.result = JSON.parse(new TextDecoder().decode(ab));
           } else {
-            return _origXHRSend.call(xhr, body);
+            ctx.result = ab;
           }
-        }).catch(()=>{ _origXHRSend.call(xhr, body); });
-        return;
-      }
-      return _origXHRSend.call(this, body);
-    };
+          return next();
+        }
+        console.warn('[L2D CustomLoader] Not found in ZIP, falling back to XHR:', url);
+        return _origLoaderFn(ctx, next);
+      };
+      console.log('[L2D] Live2DLoader.middlewares[0] replaced (XHR bypass)');
+    } else if(XHRLoaderRef){
+      // フォールバック: XHRLoader.loader を差し替え
+      _origLoaderFn = XHRLoaderRef.loader;
+      XHRLoaderRef.loader = async function(ctx, next){
+        const url = ctx.settings ? ctx.settings.resolveURL(ctx.url) : ctx.url;
+        console.log('[L2D XHR Override] Request:', url, 'type:', ctx.type);
+        const ab = lookupData(url);
+        if(ab){
+          if(ctx.type === 'json'){
+            ctx.result = JSON.parse(new TextDecoder().decode(ab));
+          } else {
+            ctx.result = ab;
+          }
+          return next();
+        }
+        return _origLoaderFn(ctx, next);
+      };
+      console.log('[L2D] XHRLoader.loader replaced');
+    } else {
+      console.warn('[L2D] Cannot access SDK loader, model loading may fail');
+    }
 
-    // ── パッチ後にモデル読み込み ──
     try {
-      _mhPreviewModel = await PIXI.live2d.Live2DModel.from(modelUrl, {
+      // settingsJson を直接渡す（model3.json のURLフェッチ不要）
+      // SDK の pipeline: Pe(urlToJSON) はオブジェクトならスキップ → Ce(jsonToSettings) で Settings 化
+      _mhPreviewModel = await PIXI.live2d.Live2DModel.from(settingsJson, {
         onError: (e) => console.error('L2D load error:', e)
       });
     } finally {
-      // パッチを元に戻す
-      window.fetch = _origFetch;
-      XMLHttpRequest.prototype.open = _origXHROpen;
-      XMLHttpRequest.prototype.send = _origXHRSend;
+      // ローダーを元に戻す
+      if(L2DLoader && L2DLoader.middlewares && _origLoaderFn && L2DLoader.middlewares[0] !== _origLoaderFn){
+        L2DLoader.middlewares[0] = _origLoaderFn;
+        console.log('[L2D] Live2DLoader restored');
+      } else if(XHRLoaderRef && XHRLoaderRef.loader !== _origLoaderFn && _origLoaderFn){
+        XHRLoaderRef.loader = _origLoaderFn;
+        console.log('[L2D] XHRLoader restored');
+      }
+    }
+
+    if(!_mhPreviewModel){
+      throw new Error('モデルの読み込みに失敗しました');
     }
 
     _mhPreviewApp.stage.addChild(_mhPreviewModel);
@@ -7219,7 +7333,7 @@ async function _initMhPreview(){
 
   } catch(e) {
     console.error('_initMhPreview error:', e);
-    setStatus('LOAD FAILED', 'rgba(255,80,80,.8)');
+    setStatus('LOAD FAILED: ' + (e.message||e), 'rgba(255,80,80,.8)');
     window.showDropToast('モデル読み込み失敗: ' + e.message);
   }
 }
@@ -7252,6 +7366,11 @@ function _destroyMhPreview(){
   } catch(e){}
   _mhPreviewApp = null;
   _mhPreviewScale = 1.0;
+  // テクスチャ用 Blob URL を解放
+  if(_mhTexBlobUrls && _mhTexBlobUrls.length > 0){
+    _mhTexBlobUrls.forEach(u => { try { URL.revokeObjectURL(u); } catch(e){} });
+    _mhTexBlobUrls = [];
+  }
 }
 
 window._mhPreviewZoom = function(factor){
