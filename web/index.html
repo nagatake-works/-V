@@ -2247,6 +2247,49 @@ textarea.mh-input{
   line-height:1.7;font-size:13px;
 }
 
+/* ── 声選択カード ── */
+.voice-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;}
+.voice-card{
+  position:relative;
+  padding:10px 10px 8px;border-radius:10px;cursor:pointer;
+  background:rgba(12,16,36,.85);
+  border:1.5px solid rgba(140,100,255,.15);
+  transition:border-color .2s,box-shadow .2s,transform .15s;
+}
+.voice-card:active{transform:scale(.97);}
+.voice-card.selected{
+  border-color:rgba(140,100,255,.6);
+  box-shadow:0 0 18px rgba(140,100,255,.18);
+  background:rgba(30,20,60,.9);
+}
+.voice-card .vc-label{
+  font-size:12px;font-weight:700;color:rgba(220,200,255,.85);
+  letter-spacing:.5px;margin-bottom:2px;
+}
+.voice-card .vc-sub{
+  font-size:9px;color:rgba(180,160,220,.5);letter-spacing:.5px;
+}
+.voice-card .vc-check{
+  position:absolute;top:6px;right:6px;
+  width:18px;height:18px;border-radius:50%;
+  border:1.5px solid rgba(140,100,255,.3);
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;color:transparent;transition:all .2s;
+}
+.voice-card.selected .vc-check{
+  background:rgba(140,100,255,.8);color:#fff;
+  border-color:rgba(140,100,255,.8);
+}
+.voice-card .vc-preview-btn{
+  display:inline-flex;align-items:center;gap:3px;
+  margin-top:6px;padding:3px 8px;border-radius:5px;
+  background:rgba(0,200,255,.08);border:1px solid rgba(0,200,255,.15);
+  color:rgba(0,220,255,.7);font-size:9px;font-weight:600;
+  cursor:pointer;letter-spacing:.5px;
+}
+.voice-card .vc-preview-btn:hover{background:rgba(0,200,255,.15);}
+.voice-card .vc-preview-btn.playing{background:rgba(255,100,200,.12);border-color:rgba(255,100,200,.3);color:rgba(255,120,200,.8);}
+
 .mh-btn{
   display:inline-flex;align-items:center;justify-content:center;gap:8px;
   padding:12px 28px;border:none;border-radius:10px;
@@ -3108,10 +3151,17 @@ async function speakText(text){
     const vBtn=document.getElementById('voice-btn');
     vBtn.classList.add('speaking');
 
+    // アクティブモデルのvoice_uuidを取得
+    let voiceUuid = '';
+    try{
+      const am = window._getActiveModelForChat ? window._getActiveModelForChat() : null;
+      if(am && am.voiceId) voiceUuid = am.voiceId;
+    }catch(e){}
+
     const resp=await fetch('/api/tts',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({text:text, voice:'ja-JP-NanamiNeural'}),
+      body:JSON.stringify({text:text, voice:'ja-JP-NanamiNeural', voice_uuid: voiceUuid || ''}),
     });
     if(!resp.ok) throw new Error('TTS failed');
 
@@ -6908,6 +6958,92 @@ function getAllModels(){
 }
 
 // ── 登録ウィザード状態 ──
+
+// ── AivisCloud 声優モデル一覧 ──
+window._AIVIS_VOICES = [
+  { uuid:'a59cb814-0083-4369-8542-f51a29e72af7', name:'まお', label:'A — まお', speakerUuid:'c6b08649-0e8e-4cbb-b94c-1cf2e41e6403' },
+  { uuid:'7fc08a41-b64d-456d-8b22-8e1284674775', name:'zonoko', label:'B — zonoko', speakerUuid:'8e2dfde9-a155-4bd8-b451-80832ad5e8ac' },
+  { uuid:'e9339137-2ae3-4d41-9394-fb757a7e61e6', name:'花音', label:'C — 花音', speakerUuid:'41b7785f-35cc-4089-a360-dd8a63da5e75' },
+  { uuid:'a670e6b8-0852-45b2-8704-1bc9862f2fe6', name:'花音(v2)', label:'D — 花音(v2)', speakerUuid:'b1ca560f-f212-4e67-ab7d-0a4f5afb75a8' },
+  { uuid:'22e8ed77-94fe-4ef2-871f-a86f94e9a579', name:'コハク', label:'E — コハク', speakerUuid:'5680ac39-43c9-487a-bc3e-018c0d29cc38' },
+  { uuid:'4f281e78-eba6-495a-8e50-5c322d02b5b1', name:'るな', label:'F — るな', speakerUuid:'aa63d66e-92fe-499e-9e0d-15dad4a61d0d' },
+  { uuid:'9107b8b6-1ed1-43f5-bebe-0de4df4d229d', name:'中2', label:'G — 中2', speakerUuid:'27dce2b7-b033-4b82-a722-d18ddba66d94' },
+  { uuid:'3328da9a-8124-4619-a853-f7fc2f37889f', name:'桜音', label:'H — 桜音', speakerUuid:'91e8582b-daf8-4eb8-9d34-7cffae50d93f' },
+  { uuid:'0f6821f4-9f86-4da1-a41a-fbe6fff9ca88', name:'天深シノ', label:'I — 天深シノ', speakerUuid:'c175ee3c-5a1d-4901-a7fe-62d813370845' },
+];
+
+// 声選択
+let _voicePreviewAudio = null;
+window._selectVoice = function(uuid){
+  _mhDraft.voiceId = uuid;
+  document.querySelectorAll('.voice-card').forEach(c => {
+    c.classList.toggle('selected', c.dataset.voiceId === uuid);
+  });
+};
+
+// 声試聴
+window._previewVoice = async function(uuid, name){
+  // 既に再生中なら停止
+  if(_voicePreviewAudio){
+    _voicePreviewAudio.pause();
+    _voicePreviewAudio = null;
+    document.querySelectorAll('.vc-preview-btn.playing').forEach(b => {
+      b.classList.remove('playing');
+      b.innerHTML = '<span class="material-symbols-rounded" style="font-size:11px;">play_arrow</span> 試聴';
+    });
+  }
+  const btn = document.getElementById('vc-btn-' + uuid);
+  if(btn){
+    btn.classList.add('playing');
+    btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:11px;">hourglass_top</span> 読込中';
+  }
+  try{
+    const resp = await fetch('/api/tts', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ text:'はじめまして！今日はどんなお話をしましょうか？', voice_uuid: uuid }),
+    });
+    if(!resp.ok) throw new Error('TTS failed');
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    _voicePreviewAudio = audio;
+    if(btn){
+      btn.classList.add('playing');
+      btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:11px;">stop</span> 停止';
+    }
+    audio.onended = ()=>{
+      _voicePreviewAudio = null;
+      URL.revokeObjectURL(url);
+      if(btn){
+        btn.classList.remove('playing');
+        btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:11px;">play_arrow</span> 試聴';
+      }
+    };
+    audio.onerror = ()=>{
+      _voicePreviewAudio = null;
+      if(btn){
+        btn.classList.remove('playing');
+        btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:11px;">play_arrow</span> 試聴';
+      }
+    };
+    audio.play().catch(e=>{
+      console.warn('Voice preview play error:', e);
+      if(btn){
+        btn.classList.remove('playing');
+        btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:11px;">play_arrow</span> 試聴';
+      }
+    });
+  }catch(e){
+    console.warn('Voice preview error:', e);
+    showDropToast('声の試聴に失敗しました');
+    if(btn){
+      btn.classList.remove('playing');
+      btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:11px;">play_arrow</span> 試聴';
+    }
+  }
+};
+
 let _mhStep = 1;
 let _mhDraft = {
   id:null, name:'', creator:'ユーザー',
@@ -6916,6 +7052,7 @@ let _mhDraft = {
   zipFile:null, zipEntries:null, zipModelPath:null,
   blobUrls:{},
   personality:'', greeting:'',
+  voiceId:'', // AivisCloud model UUID for TTS
   isOfficial:false
 };
 // グローバルに公開（inline oninput/onclickからアクセス可能に）
@@ -6933,6 +7070,7 @@ function resetDraft(){
     zipFile:null, zipEntries:null, zipModelPath:null,
     blobUrls:{},
     personality:'', greeting:'',
+    voiceId:'',
     isOfficial:false
   };
   window._mhDraft = _mhDraft;
@@ -7182,6 +7320,18 @@ function renderStep(){
     `;
   } else if(_mhStep === 3){
     // ======== STEP 3: 基本情報 ========
+    const voiceList = window._AIVIS_VOICES || [];
+    const selectedVoice = _mhDraft.voiceId || '';
+    const voiceCardsHtml = voiceList.map(v => `
+      <div class="voice-card ${selectedVoice === v.uuid ? 'selected' : ''}" data-voice-id="${v.uuid}" onclick="window._selectVoice('${v.uuid}')">
+        <div class="vc-check"><span class="material-symbols-rounded" style="font-size:12px;">check</span></div>
+        <div class="vc-label">${v.label}</div>
+        <div class="vc-sub">${v.name}</div>
+        <button class="vc-preview-btn" id="vc-btn-${v.uuid}" onclick="event.stopPropagation();window._previewVoice('${v.uuid}','${v.name}')">
+          <span class="material-symbols-rounded" style="font-size:11px;">play_arrow</span> 試聴
+        </button>
+      </div>
+    `).join('');
     body.innerHTML = `
       <div class="mh-section-title"><span class="material-symbols-rounded" style="font-size:16px;">person</span> STEP 3 — 基本情報登録</div>
       <div class="mh-input-group">
@@ -7195,6 +7345,13 @@ function renderStep(){
       <div class="mh-input-group">
         <label><span class="material-symbols-rounded" style="font-size:12px;vertical-align:-2px;">waving_hand</span> 初回あいさつメッセージ</label>
         <input class="mh-input" id="mh-greeting" placeholder="例：初めまして！よろしくね♪" value="${_mhDraft.greeting}">
+      </div>
+      <div class="mh-input-group">
+        <label><span class="material-symbols-rounded" style="font-size:12px;vertical-align:-2px;">record_voice_over</span> ボイス選択</label>
+        <div style="font-size:10px;color:rgba(180,160,220,.5);margin-bottom:6px;letter-spacing:.3px;">キャラクターの声を選択してください（未選択時はデフォルト声）</div>
+        <div class="voice-grid" id="mh-voice-grid">
+          ${voiceCardsHtml}
+        </div>
       </div>
       <div style="background:rgba(255,200,60,.04);border:1px solid rgba(255,200,60,.12);border-radius:8px;padding:10px 12px;margin-top:8px;">
         <div style="display:flex;align-items:center;gap:6px;">
@@ -7242,6 +7399,10 @@ function renderStep(){
           <div style="display:flex;align-items:center;gap:8px;font-size:11px;">
             <span class="material-symbols-rounded" style="font-size:14px;color:rgba(0,200,255,.5);">chat</span>
             <span style="color:rgba(200,220,255,.6);">あいさつ: ${_mhDraft.greeting||'デフォルト'}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:11px;">
+            <span class="material-symbols-rounded" style="font-size:14px;color:rgba(200,100,255,.6);">record_voice_over</span>
+            <span style="color:rgba(200,220,255,.6);">ボイス: ${_mhDraft.voiceId ? (window._AIVIS_VOICES||[]).find(v=>v.uuid===_mhDraft.voiceId)?.label || _mhDraft.voiceId : 'デフォルト（来鳥アルエ）'}</span>
           </div>
         </div>
 
@@ -7961,6 +8122,8 @@ function _destroyChatCustomL2D(){
 }
 
 window.mhNext = function(){
+  // 声試聴を停止
+  if(_voicePreviewAudio){ _voicePreviewAudio.pause(); _voicePreviewAudio = null; }
   // STEP3ではDOMから最新値を読み取る（クロージャ問題の完全回避）
   if(_mhStep === 3){
     const nameEl = document.getElementById('mh-name');
@@ -8003,6 +8166,8 @@ window.mhNext = function(){
   if(_mhStep < 5){ _mhStep++; renderStep(); }
 };
 window.mhPrev = function(){
+  // 声試聴を停止
+  if(_voicePreviewAudio){ _voicePreviewAudio.pause(); _voicePreviewAudio = null; }
   // STEP3から戻る場合もDOMから値を保存
   if(_mhStep === 3){
     const nameEl = document.getElementById('mh-name');
@@ -8219,6 +8384,7 @@ window.saveNewModel = async function(){
     hasLive2D: !!(_mhDraft.modelMeta && _mhDraft.modelMeta.hasMoc && _mhDraft.modelMeta.hasTextures),
     personality: _mhDraft.personality.trim(),
     greeting: _mhDraft.greeting.trim() || 'はじめまして！よろしくね！',
+    voiceId: _mhDraft.voiceId || '',
     isOfficial: false,
     createdAt: Date.now()
   };
@@ -8514,11 +8680,35 @@ window.switchToModel = async function(id){
       if(isDefault){
         // デフォルトモデル(アルエ): Live2Dキャンバス表示
         _destroyChatCustomL2D();
+        // カスタムLive2Dコンテナも確実に非表示
+        if(customL2dWrap){ customL2dWrap.style.display = 'none'; customL2dWrap.innerHTML = ''; }
         if(l2dWrap) l2dWrap.style.display = '';
         if(typeof live2dModel !== 'undefined' && live2dModel && typeof pixiApp !== 'undefined' && pixiApp){
+          // live2dModelをステージに再追加（removeされている場合）
           if(!pixiApp.stage.children.includes(live2dModel)){
             try { pixiApp.stage.addChild(live2dModel); } catch(e){}
           }
+          // キャンバスを強制的に表示
+          if(pixiApp.view){
+            pixiApp.view.style.visibility = 'visible';
+            pixiApp.view.style.opacity = '1';
+            pixiApp.view.style.display = 'block';
+          }
+          // tickerが止まっていたら再開
+          if(pixiApp.ticker && !pixiApp.ticker.started){
+            pixiApp.ticker.start();
+          }
+          // レイアウト確定後にリサイズ＋再配置（requestAnimationFrameで確実に）
+          requestAnimationFrame(()=>{
+            try{
+              const charArea = l2dWrap.parentElement || l2dWrap;
+              const nw = charArea.clientWidth || window.innerWidth;
+              const nh = charArea.clientHeight || window.innerHeight;
+              pixiApp.renderer.resize(nw, nh);
+              if(typeof placeModel === 'function') placeModel(nw, nh);
+              pixiApp.render(); // 強制描画
+            }catch(e){ console.warn('Arue resize error:', e); }
+          });
         }
         console.log('Live2D表示: アルエ(デフォルト)');
 

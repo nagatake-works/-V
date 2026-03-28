@@ -110,13 +110,18 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 return
 
+            # クライアントから voice_uuid が指定されていればそれを使用
+            voice_uuid = data.get("voice_uuid", "").strip()
+            model_uuid = voice_uuid if voice_uuid else AIVIS_MODEL_UUID
+            print(f"[TTS] Using model_uuid: {model_uuid[:12]}... for text: '{text[:30]}'")
+
             audio_data = None
             source = "unknown"
 
             # ── 1. AivisCloud API を試行 ──
             try:
                 aivis_body = json.dumps({
-                    "model_uuid": AIVIS_MODEL_UUID,
+                    "model_uuid": model_uuid,
                     "text": text,
                     "output_format": "mp3",
                 }).encode("utf-8")
