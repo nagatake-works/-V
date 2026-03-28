@@ -6978,7 +6978,7 @@ function renderStep(){
       </div>
     `;
   } else if(_mhStep === 5){
-    // ======== STEP 5: Live2D プレビュー ========
+    // ======== STEP 5: Live2D プレビュー（親ページ内で直接描画） ========
     const meta = _mhDraft.modelMeta;
     const expressions = (meta && meta.expressions) ? meta.expressions : [];
 
@@ -6991,25 +6991,24 @@ function renderStep(){
             <span style="font-size:12px;color:rgba(0,220,255,.7);font-weight:700;">${_mhDraft.name||'Model'} — Live2D Preview</span>
           </div>
           <div style="display:flex;gap:6px;">
-            <button class="mh-btn" style="padding:4px 8px;font-size:10px;" onclick="sendMhPreviewCmd('l2d-zoom',{factor:1.15})">+</button>
-            <button class="mh-btn" style="padding:4px 8px;font-size:10px;" onclick="sendMhPreviewCmd('l2d-zoom',{factor:0.87})">-</button>
-            <button class="mh-btn" style="padding:4px 8px;font-size:10px;" onclick="sendMhPreviewCmd('l2d-reset',{})">R</button>
+            <button class="mh-btn" style="padding:4px 8px;font-size:10px;" onclick="window._mhPreviewZoom(1.15)">+</button>
+            <button class="mh-btn" style="padding:4px 8px;font-size:10px;" onclick="window._mhPreviewZoom(0.87)">-</button>
+            <button class="mh-btn" style="padding:4px 8px;font-size:10px;" onclick="window._mhPreviewReset()">R</button>
           </div>
         </div>
 
-        <!-- iframeプレビュー -->
+        <!-- 直接描画プレビュー -->
         <div style="flex:1;position:relative;overflow:hidden;background:radial-gradient(ellipse at 50% 80%, rgba(60,20,120,.1) 0%, transparent 70%);" id="mh-preview-area">
-          <iframe id="mh-preview-iframe"
-            src="live2d/live2d_preview.html"
-            style="width:100%;height:100%;border:none;position:absolute;inset:0;"
-            allow="autoplay"></iframe>
+          <div id="mh-preview-status" style="position:absolute;top:12px;left:0;right:0;text-align:center;z-index:10;">
+            <span style="background:rgba(0,0,0,.6);color:rgba(0,200,255,.7);padding:4px 16px;border-radius:12px;font-size:11px;font-family:monospace;">LOADING...</span>
+          </div>
         </div>
 
         <!-- 表情ボタン -->
         ${expressions.length ? `
         <div style="display:flex;flex-wrap:wrap;gap:4px;padding:6px 10px;background:rgba(0,0,0,.3);border-top:1px solid rgba(0,200,255,.06);max-height:64px;overflow-y:auto;flex-shrink:0;">
-          ${expressions.slice(0,15).map(e=>`<button class="l2d-ctrl-btn" onclick="sendMhPreviewCmd('l2d-expression',{name:'${e}'})">${e}</button>`).join('')}
-          <button class="l2d-ctrl-btn" onclick="sendMhPreviewCmd('l2d-expression',{name:null})">Reset</button>
+          ${expressions.slice(0,15).map(e=>`<button class="l2d-ctrl-btn" onclick="window._mhPreviewExpression('${e}')">${e}</button>`).join('')}
+          <button class="l2d-ctrl-btn" onclick="window._mhPreviewExpression(null)">Reset</button>
         </div>` : ''}
 
         <!-- アクションボタン -->
@@ -7024,68 +7023,149 @@ function renderStep(){
       </div>
     `;
 
-    // iframeが読み込まれたらZIPデータをiframeに送信してLive2Dプレビュー
-    const iframe = document.getElementById('mh-preview-iframe');
-    if(iframe){
-      iframe.addEventListener('load', async ()=>{
-        try {
-          console.log('STEP5 iframe loaded, preparing data for iframe...');
-          const zip = _mhDraft.zipFile;
-          const entries = _mhDraft.zipEntries;
-          if(!zip || !entries || !entries.length){
-            window.showDropToast('ZIPデータが見つかりません');
-            return;
-          }
-
-          // model3.jsonのパスを取得
-          let model3Path = '';
-          for(const e of entries){
-            if(/\.model3\.json$/i.test(e.name)){
-              model3Path = e.name;
-              break;
-            }
-          }
-          if(!model3Path){
-            window.showDropToast('.model3.json がZIP内に見つかりません');
-            return;
-          }
-
-          // ZIPから全ファイルの生データを抽出
-          const fileDataMap = {};
-          const transferList = [];
-          for(const e of entries){
-            const ab = await e.entry.async('arraybuffer');
-            fileDataMap[e.name] = ab;
-            transferList.push(ab);
-          }
-
-          console.log('Sending', Object.keys(fileDataMap).length, 'files via Transferable postMessage, total entries:', entries.length);
-
-          setTimeout(()=>{
-            // Transferableとして送信（ゼロコピー、高速）
-            iframe.contentWindow.postMessage({
-              type: 'l2d-load-raw',
-              fileDataMap: fileDataMap,
-              model3Path: model3Path,
-              name: _mhDraft.name || 'Model'
-            }, '*', transferList);
-          }, 300);
-
-        } catch(e){
-          console.error('Preview load error:', e);
-          window.showDropToast('プレビューの読み込みに失敗: '+e.message);
-        }
-      });
-    }
+    // 親ページで直接Live2Dモデルを描画（iframeなし）
+    _initMhPreview();
   }
 }
 
-// プレビューiframeにコマンドを送信
-window.sendMhPreviewCmd = function(type, data){
-  const iframe = document.getElementById('mh-preview-iframe');
-  if(iframe && iframe.contentWindow){
-    iframe.contentWindow.postMessage({ type, ...data }, '*');
+// ── STEP5 Live2Dプレビュー（親ページ内で直接描画） ──
+let _mhPreviewApp = null;
+let _mhPreviewModel = null;
+let _mhPreviewScale = 1.0;
+
+async function _initMhPreview(){
+  const area = document.getElementById('mh-preview-area');
+  const statusEl = document.getElementById('mh-preview-status');
+  if(!area) return;
+
+  function setStatus(text, color){
+    if(!statusEl) return;
+    statusEl.innerHTML = `<span style="background:rgba(0,0,0,.6);color:${color||'rgba(0,200,255,.7)'};padding:4px 16px;border-radius:12px;font-size:11px;font-family:monospace;">${text}</span>`;
   }
+
+  try {
+    if(!window.PIXI || !PIXI.live2d){
+      setStatus('LOAD FAILED', 'rgba(255,80,80,.8)');
+      window.showDropToast('Live2D SDKが読み込まれていません');
+      return;
+    }
+
+    // zipModelPathは親ページで生成済み（有効なBlob URL）
+    const modelUrl = _mhDraft.zipModelPath;
+    if(!modelUrl){
+      setStatus('LOAD FAILED', 'rgba(255,80,80,.8)');
+      window.showDropToast('モデルデータが見つかりません');
+      return;
+    }
+
+    setStatus('INITIALIZING...');
+
+    // 古いプレビューを破棄
+    _destroyMhPreview();
+
+    const W = area.clientWidth || 300;
+    const H = area.clientHeight || 400;
+
+    _mhPreviewApp = new PIXI.Application({
+      width: W, height: H,
+      backgroundAlpha: 0,
+      antialias: true,
+      autoDensity: true,
+      resolution: Math.min(window.devicePixelRatio || 1, 1.5),
+      powerPreference: 'high-performance',
+    });
+    area.appendChild(_mhPreviewApp.view);
+    _mhPreviewApp.view.style.cssText = 'width:100%;height:100%;display:block;position:absolute;inset:0;';
+
+    setStatus('LOADING MODEL...');
+    console.log('Loading Live2D from zipModelPath:', modelUrl);
+
+    _mhPreviewModel = await PIXI.live2d.Live2DModel.from(modelUrl, {
+      onError: (e) => console.error('L2D load error:', e)
+    });
+
+    _mhPreviewApp.stage.addChild(_mhPreviewModel);
+    _mhPreviewScale = 1.0;
+    _placeMhPreviewModel();
+    _mhPreviewApp.ticker.maxFPS = 30;
+
+    setStatus(_mhDraft.name + ' READY', 'rgba(0,255,150,.7)');
+    setTimeout(()=>{ if(statusEl) statusEl.style.opacity = '0'; }, 2000);
+
+    // リサイズ対応
+    new ResizeObserver(()=>{
+      if(!_mhPreviewApp) return;
+      const nw = area.clientWidth, nh = area.clientHeight;
+      if(nw > 0 && nh > 0){
+        _mhPreviewApp.renderer.resize(nw, nh);
+        _placeMhPreviewModel();
+      }
+    }).observe(area);
+
+    // ドラッグ対応
+    let dragActive = false, dragLX = 0, dragLY = 0;
+    _mhPreviewApp.view.addEventListener('pointerdown', (e)=>{
+      dragActive = true; dragLX = e.clientX; dragLY = e.clientY;
+    });
+    window.addEventListener('pointermove', (e)=>{
+      if(!dragActive || !_mhPreviewModel) return;
+      _mhPreviewModel.x += e.clientX - dragLX;
+      _mhPreviewModel.y += e.clientY - dragLY;
+      dragLX = e.clientX; dragLY = e.clientY;
+    });
+    window.addEventListener('pointerup', ()=>{ dragActive = false; });
+
+  } catch(e) {
+    console.error('_initMhPreview error:', e);
+    setStatus('LOAD FAILED', 'rgba(255,80,80,.8)');
+    window.showDropToast('モデル読み込み失敗: ' + e.message);
+  }
+}
+
+function _placeMhPreviewModel(){
+  if(!_mhPreviewModel || !_mhPreviewApp) return;
+  const W = _mhPreviewApp.renderer.width / (_mhPreviewApp.renderer.resolution || 1);
+  const H = _mhPreviewApp.renderer.height / (_mhPreviewApp.renderer.resolution || 1);
+  const mW = _mhPreviewModel.width, mH = _mhPreviewModel.height;
+  const fitScale = Math.min(W * 0.85 / mW, H * 0.85 / mH);
+  const s = fitScale * _mhPreviewScale;
+  _mhPreviewModel.scale.set(s, s);
+  _mhPreviewModel.x = W / 2;
+  _mhPreviewModel.y = H * 0.55;
+  _mhPreviewModel.anchor.set(0.5, 0.5);
+}
+
+function _destroyMhPreview(){
+  try {
+    if(_mhPreviewModel && _mhPreviewApp && _mhPreviewApp.stage){
+      _mhPreviewApp.stage.removeChild(_mhPreviewModel);
+      _mhPreviewModel.destroy({ children:true, texture:true, baseTexture:true });
+    }
+  } catch(e){}
+  _mhPreviewModel = null;
+  try {
+    if(_mhPreviewApp){
+      _mhPreviewApp.destroy(true, { children:true, texture:true, baseTexture:true });
+    }
+  } catch(e){}
+  _mhPreviewApp = null;
+  _mhPreviewScale = 1.0;
+}
+
+window._mhPreviewZoom = function(factor){
+  _mhPreviewScale = Math.max(0.3, Math.min(3.0, _mhPreviewScale * factor));
+  _placeMhPreviewModel();
+};
+window._mhPreviewReset = function(){
+  _mhPreviewScale = 1.0;
+  _placeMhPreviewModel();
+};
+window._mhPreviewExpression = function(name){
+  if(!_mhPreviewModel) return;
+  try {
+    if(name) _mhPreviewModel.expression(name);
+    else _mhPreviewModel.expression();
+  } catch(e){}
 };
 
 window.mhNext = function(){
@@ -7140,10 +7220,9 @@ window.mhPrev = function(){
     if(personaEl) _mhDraft.personality = personaEl.value;
     if(greetEl) _mhDraft.greeting = greetEl.value;
   }
-  // STEP5のiframeを破棄
+  // STEP5のプレビューを破棄
   if(_mhStep === 5){
-    const iframe = document.getElementById('mh-preview-iframe');
-    if(iframe) iframe.remove();
+    _destroyMhPreview();
   }
   if(_mhStep > 1){ _mhStep--; renderStep(); }
 };
@@ -7379,9 +7458,8 @@ window.saveNewModel = function(){
     return;
   }
 
-  // STEP5のiframeを破棄
-  const previewIframe = document.getElementById('mh-preview-iframe');
-  if(previewIframe) previewIframe.remove();
+  // STEP5のプレビューを破棄
+  _destroyMhPreview();
 
   // ローディングオーバーレイ表示
   showModelLoading(newModel);
