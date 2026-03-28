@@ -21,7 +21,7 @@ WEB_DIR = os.path.join(os.path.dirname(__file__), "build/web")
 #  APIキー (環境変数 → .env ファイル → フォールバック)
 # ══════════════════════════════════════════════════════════
 def _load_env_file():
-    """Load .env file if present"""
+    """Load .env file if present (overrides existing env vars)"""
     env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
     if os.path.exists(env_path):
         with open(env_path) as f:
@@ -29,7 +29,7 @@ def _load_env_file():
                 line = line.strip()
                 if line and not line.startswith('#') and '=' in line:
                     k, v = line.split('=', 1)
-                    os.environ.setdefault(k.strip(), v.strip())
+                    os.environ[k.strip()] = v.strip()  # .envファイルを優先
 _load_env_file()
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
