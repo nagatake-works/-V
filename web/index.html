@@ -1681,12 +1681,14 @@ body.model-browse-open #miniroom-nav-btn{
 /* ── 縦型カード（近未来UI） ── */
 .shop-item{
   display:flex;flex-direction:column;align-items:stretch;
+  height:200px;
   background:linear-gradient(160deg,rgba(8,14,30,.96) 0%,rgba(4,8,20,.98) 100%);
   border:1px solid rgba(0,200,255,.08);
   border-radius:14px;padding:0;
   cursor:pointer;position:relative;overflow:hidden;
   transition:all .3s cubic-bezier(.22,.61,.36,1);
   backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  height:200px;
 }
 .shop-item::before{
   content:'';position:absolute;top:0;left:0;right:0;height:1px;
@@ -2517,16 +2519,38 @@ textarea.mh-input{
 }
 .display-slider-val{font-size:9px;color:rgba(140,100,255,.7);float:right;}
 
-/* ランキングボタン（チャット内） */
-#ranking-btn{
-  position:fixed;top:env(safe-area-inset-top,8px);right:8px;
-  z-index:61;margin-top:8px;
-  width:36px;height:36px;border-radius:50%;
-  background:rgba(255,200,60,.08);border:1px solid rgba(255,200,60,.15);
-  display:flex;align-items:center;justify-content:center;
-  cursor:pointer;
+/* モデル管理モーダル */
+#model-manage-modal{
+  position:fixed;inset:0;z-index:500;
+  display:none;flex-direction:column;
+  background:linear-gradient(160deg,#020610 0%,#060418 50%,#020810 100%);
+  padding-top:env(safe-area-inset-top);
+  padding-bottom:env(safe-area-inset-bottom);
 }
-#ranking-btn .material-symbols-rounded{font-size:18px;color:rgba(255,200,60,.6);}
+#model-manage-modal.show{display:flex;}
+.mm-body{flex:1;overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch;}
+.mm-card{
+  background:linear-gradient(135deg,rgba(10,14,30,.9),rgba(6,8,22,.95));
+  border:1px solid rgba(100,60,255,.1);border-radius:12px;
+  padding:16px;margin-bottom:12px;
+}
+.mm-card-title{font-size:12px;font-weight:700;color:rgba(220,210,255,.8);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.mm-stat{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(100,60,255,.06);}
+.mm-stat-label{font-size:10px;color:rgba(180,160,220,.5);}
+.mm-stat-val{font-size:12px;font-weight:700;color:rgba(255,200,60,.7);}
+
+/* ランキングボタン（VPゲージ下） */
+#ranking-btn{
+  position:absolute;top:34px;left:10px;
+  z-index:15;
+  display:flex;align-items:center;gap:3px;
+  padding:2px 8px;border-radius:10px;
+  background:rgba(255,200,60,.06);border:1px solid rgba(255,200,60,.1);
+  cursor:pointer;transition:all .2s;
+}
+#ranking-btn:active{background:rgba(255,200,60,.15);}
+#ranking-btn .material-symbols-rounded{font-size:11px;color:rgba(255,200,60,.45);}
+#ranking-btn .rank-label{font-size:8px;color:rgba(255,200,60,.4);font-weight:600;letter-spacing:.3px;}
 
 /* チャット中モデル切替バナー */
 .model-switch-banner{
@@ -2808,10 +2832,6 @@ textarea.mh-input{
       <button class="sm-close" onclick="toggleSideMenu()">✕</button>
     </div>
     <div class="sm-items">
-      <div class="sm-item" onclick="openGiftCodeDialog()" style="cursor:pointer;">
-        <span class="material-symbols-rounded">redeem</span>
-        ギフトコード
-      </div>
       <div class="sm-item" onclick="openUserProfile()" style="cursor:pointer;">
         <span class="material-symbols-rounded">account_circle</span>
         マイプロフィール
@@ -2825,9 +2845,9 @@ textarea.mh-input{
         <span class="material-symbols-rounded">search</span>
         モデルを探す
       </div>
-      <div class="sm-item" onclick="openLive2DPreview()" style="cursor:pointer;">
-        <span class="material-symbols-rounded">view_in_ar</span>
-        Live2D プレビュー
+      <div class="sm-item" onclick="openModelManage()" style="cursor:pointer;">
+        <span class="material-symbols-rounded">settings</span>
+        モデル管理
       </div>
       <div class="sm-divider"></div>
       <a class="sm-item" href="/help.html" target="_blank">
@@ -2843,6 +2863,11 @@ textarea.mh-input{
         <span class="material-symbols-rounded">description</span>
         利用規約
       </a>
+      <div class="sm-divider"></div>
+      <div class="sm-item" onclick="openGiftCodeDialog()" style="cursor:pointer;">
+        <span class="material-symbols-rounded">redeem</span>
+        ギフトコード
+      </div>
     </div>
     <div class="sm-footer">君とV ver 1.0.0</div>
   </div>
@@ -2930,6 +2955,17 @@ textarea.mh-input{
     <div class="rank-body" id="rank-body"></div>
   </div>
 
+  <!-- モデル管理モーダル -->
+  <div id="model-manage-modal">
+    <div class="mh-header">
+      <button class="mh-back" onclick="closeModelManage()">←</button>
+      <div class="mh-title">Model Manager</div>
+    </div>
+    <div class="mm-body" id="mm-body">
+      <div style="text-align:center;padding:40px;color:rgba(140,120,200,.3);font-size:11px;">読み込み中...</div>
+    </div>
+  </div>
+
   <!-- シチュエーションパネル -->
   <div id="sit-panel">
     <div class="sit-header">
@@ -3006,6 +3042,11 @@ textarea.mh-input{
       <div id="vp-badge-bar"><div id="vp-fill"></div></div>
       <div id="vp-num">500</div>
     </div>
+    <!-- ランキングボタン（VPバッジの下に配置） -->
+    <div id="ranking-btn" onclick="openRanking()">
+      <span class="material-symbols-rounded">leaderboard</span>
+      <span class="rank-label">RANKING</span>
+    </div>
 
     <!-- BGMボタン -->
     <div id="bgm-btn" onclick="toggleBGM()" title="BGM">
@@ -3044,11 +3085,6 @@ textarea.mh-input{
 
   <!-- チャットエリア -->
   <div id="chat-area">
-
-    <!-- ランキングボタン -->
-    <div id="ranking-btn" onclick="openRanking()">
-      <span class="material-symbols-rounded">leaderboard</span>
-    </div>
 
     <!-- LINE型スクロールチャットエリア -->
     <div id="chat-scroll-area"></div>
@@ -3179,7 +3215,8 @@ function getAbsenceInfo(){
 /* ══════════════════════════════
    状態
 ══════════════════════════════ */
-let affection    = parseInt(localStorage.getItem('affection') || '50');
+function _affKey(){ return 'affection_' + (_activeModelId || 'arue_default'); }
+let affection    = parseInt(localStorage.getItem(_affKey()) || localStorage.getItem('affection') || '50');
 let situation    = SITUATIONS[0];
 let isLoading    = false;
 let live2dModel  = null;
@@ -3880,7 +3917,7 @@ function getSitGreeting(s){
 ══════════════════════════════ */
 function updateAffection(delta){
   affection=Math.min(100,Math.max(0,affection+(delta||0)));
-  localStorage.setItem('affection',affection);
+  localStorage.setItem(_affKey(),affection);
   document.getElementById('affection-fill').style.width=affection+'%';
   document.getElementById('aff-num').textContent=affection;
 }
@@ -5163,7 +5200,7 @@ window.addEventListener('DOMContentLoaded',()=>{
     const _affReset = localStorage.getItem('affection_reset');
     if(_affReset === 'true'){
       affection = 50;
-      localStorage.setItem('affection','50');
+      localStorage.setItem(_affKey(),'50');
       localStorage.removeItem('affection_reset');
       document.getElementById('affection-fill').style.width='50%';
       document.getElementById('aff-num').textContent='50';
@@ -6227,6 +6264,20 @@ window.openBattle = function(){
   const enemyImg = enemy.img || ENEMY_IMGS[Math.floor(Math.random()*ENEMY_IMGS.length)];
   if(enemyImgEl){ enemyImgEl.src = enemyImg; enemyImgEl.alt = enemy.name; }
   document.getElementById('bf-enemy-name').textContent  = enemy.name + ' LV'+enemy.lv;
+  // プレイヤー画像を現在のモデルのSD画像に更新
+  const bfPlayerImg = document.getElementById('bf-player-img');
+  if(bfPlayerImg){
+    const am = (typeof getActiveModel==='function') ? getActiveModel() : null;
+    const sdSrc = am && am.sdImg && am.sdImg !== '__stored_externally__' ? am.sdImg : (am && am.sd_image_path ? am.sd_image_path : 'img/sd_chara.png');
+    bfPlayerImg.src = sdSrc;
+    bfPlayerImg.onerror = function(){ this.src = 'img/sd_chara.png'; };
+  }
+  // プレイヤー名も更新
+  const bfPlayerName = document.querySelector('#bf-player .battle-fighter-name');
+  if(bfPlayerName){
+    const am2 = (typeof getActiveModel==='function') ? getActiveModel() : null;
+    bfPlayerName.textContent = am2 ? am2.name : 'ARUE';
+  }
   updateBattleHP();
   clearBattleLog();
   addBattleLog(`${enemy.name}が現れた！`);
@@ -7272,6 +7323,310 @@ window.saveUserProfile = async function(){
   }catch(e){ showDropToast('保存に失敗しました'); }
 };
 
+// ══════════════════════════════════════════════
+//  モデル管理画面
+// ══════════════════════════════════════════════
+window.openModelManage = async function(){
+  if(typeof toggleSideMenu === 'function') toggleSideMenu();
+  const modal = document.getElementById('model-manage-modal');
+  modal.classList.add('show');
+  await renderModelManageBody();
+};
+window.closeModelManage = function(){
+  document.getElementById('model-manage-modal').classList.remove('show');
+};
+
+async function renderModelManageBody(){
+  const body = document.getElementById('mm-body');
+  body.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(140,120,200,.3);font-size:11px;">読み込み中...</div>';
+  const uid = window._getUserId();
+  if(!uid){ body.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,120,120,.5);font-size:11px;">ログインが必要です</div>'; return; }
+  try {
+    // 自分のモデルを取得
+    const modelsResp = await fetch('/api/models?sort=recent');
+    const modelsRaw = await modelsResp.json();
+    const modelsList = Array.isArray(modelsRaw) ? modelsRaw : (modelsRaw.models || []);
+    const myModel = modelsList.find(m => m.owner_id === uid);
+
+    // 月次VP統計
+    const now = new Date();
+    const mk = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+    let vpStats = { total_points:0, total_chats:0, models:[] };
+    try {
+      const vpResp = await fetch('/api/vp-stats?month=' + mk);
+      vpStats = await vpResp.json();
+    } catch(e){}
+
+    let html = '';
+
+    // ── マイモデルカード ──
+    html += '<div class="mm-card">';
+    html += '<div class="mm-card-title"><span class="material-symbols-rounded" style="font-size:16px;color:rgba(140,100,255,.6);">smart_toy</span> マイモデル</div>';
+    if(myModel){
+      const thumb = myModel.thumbnail_path || 'img/arue_chibi.png';
+      html += `<div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;">`;
+      html += `<img src="${thumb}" style="width:56px;height:56px;border-radius:10px;object-fit:cover;border:1px solid rgba(100,60,255,.15);" onerror="this.src='img/arue_chibi.png'">`;
+      html += `<div style="flex:1;min-width:0;">`;
+      html += `<div style="font-size:13px;font-weight:700;color:rgba(220,210,255,.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${myModel.name}</div>`;
+      html += `<div style="font-size:9px;color:rgba(160,140,200,.4);margin-top:2px;">ID: ${myModel.id}</div>`;
+      html += `<div style="font-size:9px;color:rgba(160,140,200,.4);">チャット数: ${myModel.total_chats || 0}</div>`;
+      html += `</div></div>`;
+      html += `<div style="display:flex;gap:8px;flex-wrap:wrap;">`;
+      html += `<button onclick="openModelEdit('${myModel.id}')" style="flex:1;padding:8px;border:1px solid rgba(100,60,255,.2);border-radius:8px;background:rgba(100,60,255,.08);color:rgba(200,180,255,.8);font-size:10px;font-weight:600;cursor:pointer;">`;
+      html += `<span class="material-symbols-rounded" style="font-size:14px;vertical-align:-3px;">edit</span> 編集</button>`;
+      html += `<button onclick="confirmDeleteModel('${myModel.id}')" style="flex:1;padding:8px;border:1px solid rgba(255,60,60,.15);border-radius:8px;background:rgba(255,60,60,.06);color:rgba(255,120,120,.6);font-size:10px;font-weight:600;cursor:pointer;">`;
+      html += `<span class="material-symbols-rounded" style="font-size:14px;vertical-align:-3px;">delete</span> 削除</button>`;
+      html += `</div>`;
+    } else {
+      html += '<div style="text-align:center;padding:16px;color:rgba(140,120,200,.3);font-size:10px;">モデル未登録<br><span style="font-size:9px;">サイドメニューの「モデルの登録」から作成できます</span></div>';
+    }
+    html += '</div>';
+
+    // ── 月次VP消費統計 ──
+    html += '<div class="mm-card">';
+    html += `<div class="mm-card-title"><span class="material-symbols-rounded" style="font-size:16px;color:rgba(255,200,60,.6);">analytics</span> 月次統計 (${mk})</div>`;
+    html += '<div class="mm-stat"><span class="mm-stat-label">総チャット数</span><span class="mm-stat-val">' + (vpStats.total_chats || 0) + '</span></div>';
+    html += '<div class="mm-stat"><span class="mm-stat-label">総消費ポイント</span><span class="mm-stat-val">' + (vpStats.total_points || 0) + ' P</span></div>';
+    if(vpStats.models && vpStats.models.length > 0){
+      html += '<div style="margin-top:10px;font-size:9px;color:rgba(180,160,220,.4);margin-bottom:6px;">モデル別内訳</div>';
+      vpStats.models.forEach(m => {
+        html += `<div class="mm-stat"><span class="mm-stat-label">${m.model_name || m.model_id}</span><span class="mm-stat-val">${m.points || 0} P (${m.chats}回)</span></div>`;
+      });
+    }
+    html += '</div>';
+
+    body.innerHTML = html;
+  } catch(e) {
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,120,120,.5);font-size:11px;">読み込みエラー</div>';
+    console.error('[ModelManage]', e);
+  }
+}
+
+// ── モデル削除確認 ──
+window.confirmDeleteModel = async function(modelId){
+  if(!confirm('このモデルを削除しますか？この操作は取り消せません。')) return;
+  const uid = window._getUserId();
+  try {
+    const resp = await fetch('/api/models/' + modelId, {
+      method: 'DELETE', headers: window._apiHeaders()
+    });
+    if(resp.ok){
+      showDropToast('モデルを削除しました');
+      // アクティブモデルだった場合はデフォルトに戻す
+      if(_activeModelId === modelId){
+        _activeModelId = 'arue_default';
+        localStorage.setItem(ACTIVE_MODEL_KEY, 'arue_default');
+        if(typeof switchToModel === 'function') await switchToModel('arue_default');
+      }
+      // サーバーキャッシュからも削除
+      if(window._serverModelCache) delete window._serverModelCache[modelId];
+      await renderModelManageBody();
+    } else {
+      const data = await resp.json();
+      showDropToast(data.error || '削除に失敗しました');
+    }
+  } catch(e){ showDropToast('削除に失敗しました'); }
+};
+
+// ══════════════════════════════════════════════
+//  モデル編集画面
+// ══════════════════════════════════════════════
+window._editModelId = null;
+
+window.openModelEdit = async function(modelId){
+  window._editModelId = modelId;
+  const modal = document.getElementById('model-manage-modal');
+  const body = document.getElementById('mm-body');
+  body.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(140,120,200,.3);font-size:11px;">読み込み中...</div>';
+  try {
+    const resp = await fetch('/api/models/' + modelId);
+    const model = await resp.json();
+    if(model.error){ showDropToast(model.error); return; }
+
+    let html = '';
+    html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">`;
+    html += `<button onclick="renderModelManageBody()" style="background:none;border:none;color:rgba(200,180,255,.6);font-size:18px;cursor:pointer;">←</button>`;
+    html += `<div style="font-size:13px;font-weight:700;color:rgba(220,210,255,.8);">モデル編集</div>`;
+    html += `</div>`;
+
+    // サムネイル
+    const thumb = model.thumbnail_path || 'img/arue_chibi.png';
+    html += `<div class="mm-card">`;
+    html += `<div class="mm-card-title"><span class="material-symbols-rounded" style="font-size:14px;color:rgba(0,200,255,.5);">image</span> 画像</div>`;
+    html += `<div style="display:flex;gap:12px;align-items:flex-start;">`;
+    // サムネイル
+    html += `<div style="text-align:center;">`;
+    html += `<img id="me-thumb-preview" src="${thumb}" style="width:64px;height:64px;border-radius:8px;object-fit:cover;border:1px solid rgba(100,60,255,.15);" onerror="this.src='img/arue_chibi.png'">`;
+    html += `<div style="font-size:8px;color:rgba(160,140,200,.3);margin-top:4px;">サムネイル</div>`;
+    html += `<label style="display:inline-block;margin-top:4px;padding:3px 8px;font-size:8px;background:rgba(100,60,255,.1);border:1px solid rgba(100,60,255,.15);border-radius:6px;color:rgba(180,160,240,.6);cursor:pointer;">変更<input type="file" accept="image/*" style="display:none;" onchange="uploadEditImage('thumbnail','${modelId}',this)"></label>`;
+    html += `</div>`;
+    // SD画像
+    const sdImg = model.sd_image_path || '';
+    html += `<div style="text-align:center;">`;
+    html += `<img id="me-sd-preview" src="${sdImg || 'img/arue_chibi.png'}" style="width:64px;height:64px;border-radius:8px;object-fit:cover;border:1px solid rgba(100,60,255,.15);" onerror="this.src='img/arue_chibi.png'">`;
+    html += `<div style="font-size:8px;color:rgba(160,140,200,.3);margin-top:4px;">SD画像</div>`;
+    html += `<label style="display:inline-block;margin-top:4px;padding:3px 8px;font-size:8px;background:rgba(100,60,255,.1);border:1px solid rgba(100,60,255,.15);border-radius:6px;color:rgba(180,160,240,.6);cursor:pointer;">変更<input type="file" accept="image/*" style="display:none;" onchange="uploadEditImage('sd-image','${modelId}',this)"></label>`;
+    html += `</div>`;
+    // Live2D
+    html += `<div style="text-align:center;">`;
+    html += `<div style="width:64px;height:64px;border-radius:8px;border:1px solid rgba(100,60,255,.15);display:flex;align-items:center;justify-content:center;background:rgba(10,14,30,.5);">`;
+    html += `<span class="material-symbols-rounded" style="font-size:24px;color:${model.has_live2d ? 'rgba(0,255,150,.5)' : 'rgba(140,120,200,.2)'};">${model.has_live2d ? 'check_circle' : 'cancel'}</span>`;
+    html += `</div>`;
+    html += `<div style="font-size:8px;color:rgba(160,140,200,.3);margin-top:4px;">Live2D</div>`;
+    html += `<label style="display:inline-block;margin-top:4px;padding:3px 8px;font-size:8px;background:rgba(100,60,255,.1);border:1px solid rgba(100,60,255,.15);border-radius:6px;color:rgba(180,160,240,.6);cursor:pointer;">差替<input type="file" accept=".zip" style="display:none;" onchange="uploadEditL2D('${modelId}',this)"></label>`;
+    html += `</div>`;
+    html += `</div></div>`;
+
+    // 基本情報
+    html += `<div class="mm-card">`;
+    html += `<div class="mm-card-title"><span class="material-symbols-rounded" style="font-size:14px;color:rgba(0,200,255,.5);">info</span> 基本情報</div>`;
+    html += `<div style="margin-bottom:8px;"><label style="font-size:9px;color:rgba(160,140,200,.4);display:block;margin-bottom:3px;">キャラ名</label>`;
+    html += `<input id="me-name" type="text" value="${_escHtml(model.name || '')}" style="width:100%;box-sizing:border-box;padding:8px;background:rgba(10,14,30,.6);border:1px solid rgba(100,60,255,.12);border-radius:6px;color:rgba(220,210,255,.9);font-size:12px;outline:none;"></div>`;
+    html += `<div style="margin-bottom:8px;"><label style="font-size:9px;color:rgba(160,140,200,.4);display:block;margin-bottom:3px;">作者名</label>`;
+    html += `<input id="me-creator" type="text" value="${_escHtml(model.creator_name || '')}" style="width:100%;box-sizing:border-box;padding:8px;background:rgba(10,14,30,.6);border:1px solid rgba(100,60,255,.12);border-radius:6px;color:rgba(220,210,255,.9);font-size:12px;outline:none;"></div>`;
+    html += `<div style="margin-bottom:8px;"><label style="font-size:9px;color:rgba(160,140,200,.4);display:block;margin-bottom:3px;">人格プロンプト</label>`;
+    html += `<textarea id="me-personality" rows="4" style="width:100%;box-sizing:border-box;padding:8px;background:rgba(10,14,30,.6);border:1px solid rgba(100,60,255,.12);border-radius:6px;color:rgba(220,210,255,.9);font-size:11px;outline:none;resize:vertical;">${_escHtml(model.personality || '')}</textarea></div>`;
+    html += `<div style="margin-bottom:8px;"><label style="font-size:9px;color:rgba(160,140,200,.4);display:block;margin-bottom:3px;">初回あいさつ</label>`;
+    html += `<input id="me-greeting" type="text" value="${_escHtml(model.greeting || '')}" style="width:100%;box-sizing:border-box;padding:8px;background:rgba(10,14,30,.6);border:1px solid rgba(100,60,255,.12);border-radius:6px;color:rgba(220,210,255,.9);font-size:12px;outline:none;"></div>`;
+    html += `</div>`;
+
+    // 表示設定
+    html += `<div class="mm-card">`;
+    html += `<div class="mm-card-title"><span class="material-symbols-rounded" style="font-size:14px;color:rgba(0,200,255,.5);">tune</span> 表示設定</div>`;
+    html += `<div style="margin-bottom:8px;"><label style="font-size:9px;color:rgba(160,140,200,.4);display:flex;align-items:center;gap:6px;margin-bottom:3px;">表示サイズ <span class="display-slider-val" id="me-scale-val">${(model.display_scale||1.0).toFixed(1)}x</span></label>`;
+    html += `<input type="range" min="0.3" max="3.0" step="0.1" value="${model.display_scale||1.0}" id="me-scale" oninput="document.getElementById('me-scale-val').textContent=this.value+'x'" style="width:100%;-webkit-appearance:none;height:4px;border-radius:4px;background:rgba(100,60,255,.15);outline:none;"></div>`;
+    html += `<div><label style="font-size:9px;color:rgba(160,140,200,.4);display:flex;align-items:center;gap:6px;margin-bottom:3px;">上下位置 <span class="display-slider-val" id="me-offset-val">${(model.display_offset_y||0.0).toFixed(2)}</span></label>`;
+    html += `<input type="range" min="-0.5" max="0.5" step="0.01" value="${model.display_offset_y||0.0}" id="me-offset" oninput="document.getElementById('me-offset-val').textContent=parseFloat(this.value).toFixed(2)" style="width:100%;-webkit-appearance:none;height:4px;border-radius:4px;background:rgba(100,60,255,.15);outline:none;"></div>`;
+    html += `</div>`;
+
+    // 音声設定
+    html += `<div class="mm-card">`;
+    html += `<div class="mm-card-title"><span class="material-symbols-rounded" style="font-size:14px;color:rgba(0,200,255,.5);">record_voice_over</span> 音声</div>`;
+    html += `<div style="display:flex;flex-wrap:wrap;gap:4px;">`;
+    const voices = window._AIVIS_VOICES || [];
+    voices.forEach(v => {
+      const sel = (v.speakerUuid === model.voice_id) ? 'background:rgba(100,60,255,.25);border-color:rgba(140,100,255,.5);' : '';
+      html += `<div class="me-voice-card" data-uuid="${v.speakerUuid}" onclick="selectEditVoice('${v.speakerUuid}')" style="padding:4px 8px;border:1px solid rgba(100,60,255,.12);border-radius:6px;cursor:pointer;font-size:9px;color:rgba(200,180,255,.7);transition:all .2s;${sel}">${v.label} ${v.name}</div>`;
+    });
+    html += `</div></div>`;
+
+    // 保存ボタン
+    html += `<button onclick="saveModelEdit('${modelId}')" style="width:100%;padding:12px;margin-top:8px;background:linear-gradient(135deg,rgba(100,60,255,.2),rgba(0,200,255,.15));border:1px solid rgba(100,60,255,.2);border-radius:10px;color:rgba(220,210,255,.9);font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;">`;
+    html += `<span class="material-symbols-rounded" style="font-size:16px;vertical-align:-3px;">save</span> 保存する</button>`;
+
+    body.innerHTML = html;
+  } catch(e) {
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,120,120,.5);font-size:11px;">読み込みエラー</div>';
+    console.error('[ModelEdit]', e);
+  }
+};
+
+function _escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+window.selectEditVoice = function(uuid){
+  document.querySelectorAll('.me-voice-card').forEach(c => {
+    if(c.dataset.uuid === uuid){
+      c.style.background = 'rgba(100,60,255,.25)';
+      c.style.borderColor = 'rgba(140,100,255,.5)';
+    } else {
+      c.style.background = '';
+      c.style.borderColor = 'rgba(100,60,255,.12)';
+    }
+  });
+  window._editVoiceId = uuid;
+};
+
+window.saveModelEdit = async function(modelId){
+  const uid = window._getUserId();
+  if(!uid){ showDropToast('ログインが必要です'); return; }
+  const data = {
+    name: document.getElementById('me-name').value.trim(),
+    creator_name: document.getElementById('me-creator').value.trim(),
+    personality: document.getElementById('me-personality').value.trim(),
+    greeting: document.getElementById('me-greeting').value.trim(),
+    display_scale: parseFloat(document.getElementById('me-scale').value),
+    display_offset_y: parseFloat(document.getElementById('me-offset').value),
+  };
+  // 音声
+  const selectedVoice = document.querySelector('.me-voice-card[style*="rgba(100,60,255,.25)"]');
+  if(selectedVoice) data.voice_id = selectedVoice.dataset.uuid;
+  else if(window._editVoiceId) data.voice_id = window._editVoiceId;
+
+  try {
+    const resp = await fetch('/api/models/' + modelId, {
+      method: 'PUT', headers: window._apiHeaders(),
+      body: JSON.stringify(data)
+    });
+    const result = await resp.json();
+    if(resp.ok){
+      showDropToast('モデルを更新しました');
+      // サーバーキャッシュ更新
+      if(window._serverModelCache) window._serverModelCache[modelId] = result;
+      // アクティブモデルの場合はUIも更新
+      if(_activeModelId === modelId && typeof switchToModel === 'function'){
+        await switchToModel(modelId);
+      }
+      await renderModelManageBody();
+    } else {
+      showDropToast(result.error || '更新に失敗しました');
+    }
+  } catch(e){ showDropToast('更新に失敗しました'); }
+};
+
+window.uploadEditImage = async function(type, modelId, input){
+  if(!input.files[0]) return;
+  const uid = window._getUserId();
+  if(!uid) return;
+  const formData = new FormData();
+  formData.append('file', input.files[0]);
+  try {
+    const resp = await fetch('/api/models/' + modelId + '/' + type, {
+      method: 'POST', headers: {'X-User-Id': uid}, body: formData
+    });
+    const data = await resp.json();
+    if(resp.ok){
+      showDropToast((type === 'thumbnail' ? 'サムネイル' : 'SD画像') + 'を更新しました');
+      // プレビュー更新
+      if(type === 'thumbnail' && data.thumbnail_path){
+        const el = document.getElementById('me-thumb-preview');
+        if(el) el.src = data.thumbnail_path + '?t=' + Date.now();
+      }
+      if(type === 'sd-image' && data.sd_image_path){
+        const el = document.getElementById('me-sd-preview');
+        if(el) el.src = data.sd_image_path + '?t=' + Date.now();
+      }
+      // サーバーキャッシュ更新
+      if(window._serverModelCache && window._serverModelCache[modelId]){
+        Object.assign(window._serverModelCache[modelId], data);
+      }
+    } else {
+      showDropToast('アップロードに失敗しました');
+    }
+  } catch(e){ showDropToast('アップロードに失敗しました'); }
+};
+
+window.uploadEditL2D = async function(modelId, input){
+  if(!input.files[0]) return;
+  const uid = window._getUserId();
+  if(!uid) return;
+  const formData = new FormData();
+  formData.append('file', input.files[0]);
+  showDropToast('Live2Dアップロード中...');
+  try {
+    const resp = await fetch('/api/models/' + modelId + '/l2d-zip', {
+      method: 'POST', headers: {'X-User-Id': uid}, body: formData
+    });
+    if(resp.ok){
+      showDropToast('Live2Dを更新しました');
+      // 再読み込み
+      await openModelEdit(modelId);
+    } else {
+      const data = await resp.json();
+      showDropToast(data.error || 'Live2Dアップロードに失敗しました');
+    }
+  } catch(e){ showDropToast('Live2Dアップロードに失敗しました'); }
+};
+
 // ── 検索タブ切替 ──
 window.switchBrowseTab = async function(tab){
   window._currentBrowseTab = tab;
@@ -8288,11 +8643,12 @@ function _placeMhPreviewModel(){
   const W = _mhPreviewApp.renderer.width / (_mhPreviewApp.renderer.resolution || 1);
   const H = _mhPreviewApp.renderer.height / (_mhPreviewApp.renderer.resolution || 1);
   const mW = _mhPreviewModel.width, mH = _mhPreviewModel.height;
-  const fitScale = Math.min(W * 0.85 / mW, H * 0.85 / mH);
+  // 画面に収まるよう 0.4 に抑制（モバイル画面で見切れない設定）
+  const fitScale = Math.min(W * 0.4 / mW, H * 0.4 / mH);
   const s = fitScale * _mhPreviewScale;
   _mhPreviewModel.scale.set(s, s);
   _mhPreviewModel.x = W / 2;
-  _mhPreviewModel.y = H * 0.55;
+  _mhPreviewModel.y = H * 0.5;
   _mhPreviewModel.anchor.set(0.5, 0.5);
 }
 
@@ -9192,6 +9548,11 @@ window.switchToModel = async function(id){
 
   _activeModelId = id;
   localStorage.setItem(ACTIVE_MODEL_KEY, id);
+
+  // ── 信頼度をモデル別にロード ──
+  affection = parseInt(localStorage.getItem(_affKey()) || '50');
+  document.getElementById('affection-fill').style.width = affection + '%';
+  document.getElementById('aff-num').textContent = affection;
 
   // ── ルームデータをモデル別にロード ──
   try {

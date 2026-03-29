@@ -242,6 +242,8 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             parts = path.split("/")
             model_id = parts[3] if len(parts) > 3 else ""
             return self._api_get_ranking(model_id, qs)
+        if path == "/api/vp-stats":
+            return self._api_vp_stats(qs)
         if path.startswith("/uploads/"):
             # 静的ファイルとしてアップロード画像を配信
             file_path = os.path.join(BASE_DIR, path.lstrip("/"))
@@ -605,6 +607,32 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             })
         conn.close()
         return _json_resp(self, 200, {"model_id": model_id, "month": month, "ranking": result})
+
+    def _api_vp_stats(self, qs):
+        """全ユーザーの月次チャットログ（VP消費相当）の統計を返す"""
+        month = qs.get("month", [_month_key()])[0]
+        conn = get_db()
+        rows = conn.execute("""
+            SELECT SUM(cl.points) as total_points, COUNT(*) as total_chats
+            FROM chat_logs cl
+            WHERE cl.month_key = ?
+        """, (month,)).fetchone()
+        # モデルごとの内訳
+        model_rows = conn.execute("""
+            SELECT cl.model_id, m.name as model_name, SUM(cl.points) as points, COUNT(*) as chats
+            FROM chat_logs cl
+            LEFT JOIN models m ON cl.model_id = m.id
+            WHERE cl.month_key = ?
+            GROUP BY cl.model_id
+            ORDER BY points DESC
+        """, (month,)).fetchall()
+        conn.close()
+        return _json_resp(self, 200, {
+            "month": month,
+            "total_points": rows["total_points"] or 0,
+            "total_chats": rows["total_chats"] or 0,
+            "models": [dict(r) for r in model_rows]
+        })
 
     # ══════════════════════════════════════════════
     #  TTS Proxy
