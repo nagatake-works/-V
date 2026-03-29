@@ -3215,8 +3215,8 @@ function getAbsenceInfo(){
 /* ══════════════════════════════
    状態
 ══════════════════════════════ */
-function _affKey(){ return 'affection_' + (_activeModelId || 'arue_default'); }
-let affection    = parseInt(localStorage.getItem(_affKey()) || localStorage.getItem('affection') || '50');
+function _affKey(){ return 'affection_' + ((typeof _activeModelId !== 'undefined' && _activeModelId) ? _activeModelId : 'arue_default'); }
+let affection    = parseInt(localStorage.getItem('affection_' + (localStorage.getItem('vtchat_active_model') || 'arue_default')) || localStorage.getItem('affection') || '50');
 let situation    = SITUATIONS[0];
 let isLoading    = false;
 let live2dModel  = null;
