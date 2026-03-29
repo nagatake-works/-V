@@ -240,6 +240,141 @@ html,body{
 .boot-line{display:none;}
 
 /* ══════════════════════════════════════════════════
+   初回登録画面
+══════════════════════════════════════════════════ */
+#onboard-screen{
+  position:fixed;inset:0;z-index:9999;
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  background:linear-gradient(160deg,#06081a 0%,#0a0620 40%,#080c1e 100%);
+  overflow:hidden;
+  padding:24px;
+}
+#onboard-screen.show{display:flex;}
+
+/* 背景パーティクル */
+.ob-bg{
+  position:absolute;inset:0;pointer-events:none;overflow:hidden;
+}
+.ob-ring{
+  position:absolute;border-radius:50%;border:1px solid;opacity:.08;
+}
+.ob-ring:nth-child(1){width:300px;height:300px;top:-60px;right:-80px;border-color:rgba(120,80,255,.5);animation:obFloat 12s ease-in-out infinite;}
+.ob-ring:nth-child(2){width:200px;height:200px;bottom:-30px;left:-50px;border-color:rgba(0,200,255,.4);animation:obFloat 8s ease-in-out infinite reverse;}
+.ob-ring:nth-child(3){width:140px;height:140px;top:30%;left:10%;border-color:rgba(255,100,200,.3);animation:obFloat 10s ease-in-out infinite 2s;}
+@keyframes obFloat{
+  0%,100%{transform:translate(0,0) scale(1);}
+  50%{transform:translate(12px,-15px) scale(1.05);}
+}
+.ob-grid-line{
+  position:absolute;background:rgba(100,60,255,.03);
+}
+.ob-grid-line.h{width:100%;height:1px;}
+.ob-grid-line.v{width:1px;height:100%;}
+
+/* コンテンツ */
+.ob-content{
+  position:relative;z-index:2;
+  width:100%;max-width:340px;
+  display:flex;flex-direction:column;align-items:center;
+}
+.ob-title{
+  font-size:22px;font-weight:800;letter-spacing:2px;
+  background:linear-gradient(135deg,rgba(200,180,255,1),rgba(120,200,255,1));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  margin-bottom:6px;
+}
+.ob-subtitle{
+  font-size:11px;color:rgba(180,160,220,.5);letter-spacing:1px;margin-bottom:28px;
+}
+
+/* アバター */
+.ob-avatar-wrap{
+  position:relative;width:96px;height:96px;margin-bottom:20px;
+  cursor:pointer;
+}
+.ob-avatar-ring{
+  position:absolute;inset:-4px;border-radius:50%;
+  border:2px solid transparent;
+  background:linear-gradient(135deg,rgba(120,80,255,.4),rgba(0,200,255,.4)) border-box;
+  -webkit-mask:linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;
+  animation:obRingPulse 3s ease-in-out infinite;
+}
+@keyframes obRingPulse{
+  0%,100%{opacity:.6;transform:scale(1);}
+  50%{opacity:1;transform:scale(1.03);}
+}
+.ob-avatar-img{
+  width:96px;height:96px;border-radius:50%;object-fit:cover;
+  background:rgba(20,16,40,.8);
+  border:2px solid rgba(100,60,255,.15);
+}
+.ob-avatar-badge{
+  position:absolute;bottom:0;right:0;
+  width:28px;height:28px;border-radius:50%;
+  background:linear-gradient(135deg,rgba(100,60,255,.9),rgba(0,200,255,.7));
+  display:flex;align-items:center;justify-content:center;
+  border:2px solid #0a0620;
+  box-shadow:0 2px 8px rgba(100,60,255,.4);
+}
+.ob-avatar-badge .material-symbols-rounded{font-size:14px;color:#fff;}
+
+/* 入力フィールド */
+.ob-field{
+  width:100%;margin-bottom:14px;
+}
+.ob-field label{
+  display:block;font-size:9px;color:rgba(160,140,200,.4);
+  letter-spacing:.5px;margin-bottom:5px;text-transform:uppercase;
+}
+.ob-input{
+  width:100%;box-sizing:border-box;padding:12px 14px;
+  background:rgba(12,10,30,.7);
+  border:1px solid rgba(100,60,255,.12);
+  border-radius:10px;outline:none;
+  color:rgba(220,210,255,.9);font-size:13px;
+  transition:border-color .2s;
+}
+.ob-input:focus{border-color:rgba(100,60,255,.35);}
+.ob-input::placeholder{color:rgba(140,120,200,.25);}
+.ob-char-count{
+  float:right;font-size:8px;color:rgba(140,120,200,.3);margin-top:3px;
+}
+textarea.ob-input{
+  resize:vertical;min-height:60px;font-family:inherit;
+}
+
+/* ボタン */
+.ob-btn{
+  width:100%;padding:14px;margin-top:10px;
+  border:none;border-radius:12px;cursor:pointer;
+  font-size:14px;font-weight:700;letter-spacing:1px;
+  color:rgba(255,255,255,.95);
+  background:linear-gradient(135deg,rgba(100,60,255,.7),rgba(60,120,255,.6));
+  box-shadow:0 4px 20px rgba(100,60,255,.25),0 0 40px rgba(100,60,255,.08);
+  transition:all .3s;
+  position:relative;overflow:hidden;
+}
+.ob-btn:active{transform:scale(.97);box-shadow:0 2px 10px rgba(100,60,255,.3);}
+.ob-btn::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,transparent 30%,rgba(255,255,255,.08) 50%,transparent 70%);
+  animation:obShine 3s ease-in-out infinite;
+}
+@keyframes obShine{
+  0%{transform:translateX(-100%);}
+  100%{transform:translateX(100%);}
+}
+.ob-skip{
+  margin-top:14px;font-size:10px;color:rgba(140,120,200,.3);
+  cursor:pointer;letter-spacing:.5px;transition:color .2s;
+}
+.ob-skip:hover{color:rgba(180,160,220,.5);}
+.ob-hint{
+  font-size:9px;color:rgba(140,120,200,.25);margin-top:4px;text-align:center;
+}
+
+/* ══════════════════════════════════════════════════
    LAYOUT
 ══════════════════════════════════════════════════ */
 #app{
@@ -2763,6 +2898,55 @@ textarea.mh-input{
   </div>
 </div>
 
+<!-- 初回ユーザー登録画面 -->
+<div id="onboard-screen">
+  <div class="ob-bg">
+    <div class="ob-ring"></div>
+    <div class="ob-ring"></div>
+    <div class="ob-ring"></div>
+    <div class="ob-grid-line h" style="top:20%"></div>
+    <div class="ob-grid-line h" style="top:50%"></div>
+    <div class="ob-grid-line h" style="top:80%"></div>
+    <div class="ob-grid-line v" style="left:25%"></div>
+    <div class="ob-grid-line v" style="left:75%"></div>
+  </div>
+  <div class="ob-content">
+    <div class="ob-title">REGISTRATION</div>
+    <div class="ob-subtitle">プロフィールを設定してはじめよう</div>
+
+    <!-- アバター -->
+    <div class="ob-avatar-wrap" onclick="document.getElementById('ob-icon-input').click()">
+      <div class="ob-avatar-ring"></div>
+      <img class="ob-avatar-img" id="ob-avatar-img" src="" alt="avatar" style="display:none;">
+      <div id="ob-avatar-placeholder" style="width:96px;height:96px;border-radius:50%;background:rgba(20,16,40,.8);border:2px solid rgba(100,60,255,.15);display:flex;align-items:center;justify-content:center;">
+        <span class="material-symbols-rounded" style="font-size:36px;color:rgba(140,120,200,.25);">person</span>
+      </div>
+      <div class="ob-avatar-badge">
+        <span class="material-symbols-rounded">photo_camera</span>
+      </div>
+      <input type="file" id="ob-icon-input" accept="image/*" style="display:none;" onchange="onObIconSelect(this)">
+    </div>
+
+    <!-- ニックネーム -->
+    <div class="ob-field">
+      <label>Nickname</label>
+      <input class="ob-input" id="ob-name" type="text" placeholder="ニックネームを入力" maxlength="20" oninput="document.getElementById('ob-name-count').textContent=this.value.length+'/20'">
+      <span class="ob-char-count" id="ob-name-count">0/20</span>
+    </div>
+
+    <!-- プロフィール -->
+    <div class="ob-field">
+      <label>Profile <span style="color:rgba(140,120,200,.2);">(任意)</span></label>
+      <textarea class="ob-input" id="ob-profile" placeholder="自己紹介を入力" maxlength="100" rows="2" oninput="document.getElementById('ob-profile-count').textContent=this.value.length+'/100'"></textarea>
+      <span class="ob-char-count" id="ob-profile-count">0/100</span>
+    </div>
+
+    <!-- 登録ボタン -->
+    <button class="ob-btn" onclick="submitOnboard()">はじめる</button>
+    <div class="ob-hint">あとからサイドメニューで変更できます</div>
+  </div>
+</div>
+
 <!-- SPLASH リニューアル -->
 <div id="splash">
   <!-- 背景グラデーション -->
@@ -3751,6 +3935,14 @@ function setBG(situId){
   function hideSplashScreen(){
     const s = document.getElementById('splash');
     if(s){ s.classList.add('hide'); setTimeout(()=>{ s.style.display='none'; }, 1200); }
+    // 初回登録画面を表示
+    if(window._showOnboardAfterSplash){
+      window._showOnboardAfterSplash = false;
+      setTimeout(()=>{
+        const ob = document.getElementById('onboard-screen');
+        if(ob){ ob.classList.add('show'); ob.style.opacity='1'; }
+      }, 800);
+    }
   }
 
   const startupAudio = new Audio('audio/startup.mp3');
@@ -7132,20 +7324,130 @@ window._L2DZipDB = _L2DZipDB;
 ══════════════════════════════════════════════ */
 (function(){
 const USER_ID_KEY = 'vtchat_user_id';
+const ONBOARD_DONE_KEY = 'vtchat_onboard_done';
 
 // ── デバイスUUID生成 ──
 function generateUserId(){
   return 'u_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
 }
 
+// ── 初回登録画面の表示制御 ──
+window._onboardIconFile = null;
+
+window.onObIconSelect = function(input){
+  if(!input.files[0]) return;
+  window._onboardIconFile = input.files[0];
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const img = document.getElementById('ob-avatar-img');
+    const ph = document.getElementById('ob-avatar-placeholder');
+    img.src = e.target.result;
+    img.style.display = '';
+    ph.style.display = 'none';
+  };
+  reader.readAsDataURL(input.files[0]);
+};
+
+window.submitOnboard = async function(){
+  const nameInput = document.getElementById('ob-name');
+  const name = nameInput.value.trim();
+  if(!name){
+    nameInput.style.borderColor = 'rgba(255,80,80,.5)';
+    nameInput.placeholder = 'ニックネームは必須です';
+    setTimeout(()=>{ nameInput.style.borderColor = ''; nameInput.placeholder = 'ニックネームを入力'; }, 2000);
+    return;
+  }
+  const profile = document.getElementById('ob-profile').value.trim();
+  const btn = document.querySelector('.ob-btn');
+  btn.textContent = '登録中...';
+  btn.style.pointerEvents = 'none';
+
+  try {
+    // ユーザーID生成＆登録
+    let uid = localStorage.getItem(USER_ID_KEY);
+    if(!uid){
+      uid = generateUserId();
+      localStorage.setItem(USER_ID_KEY, uid);
+    }
+    // サーバー登録
+    const regResp = await fetch('/api/user/register', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({id: uid, name: name})
+    });
+    const userData = await regResp.json();
+    window._currentUser = userData;
+
+    // プロフィール更新
+    if(profile){
+      await fetch('/api/user/'+uid, {
+        method:'PUT', headers:{'Content-Type':'application/json','X-User-Id':uid},
+        body: JSON.stringify({name, profile})
+      });
+      window._currentUser.name = name;
+      window._currentUser.profile = profile;
+    }
+
+    // アイコンアップロード
+    if(window._onboardIconFile){
+      const formData = new FormData();
+      formData.append('file', window._onboardIconFile);
+      try{
+        const iconResp = await fetch('/api/user/'+uid+'/icon', {
+          method:'POST', headers:{'X-User-Id':uid}, body: formData
+        });
+        const iconData = await iconResp.json();
+        if(iconData.icon_path) window._currentUser.icon_path = iconData.icon_path;
+      }catch(e){}
+    }
+
+    // 完了フラグ
+    localStorage.setItem(ONBOARD_DONE_KEY, '1');
+    console.log('[ONBOARD] Registration complete:', uid, name);
+
+    // 登録画面を閉じる
+    const screen = document.getElementById('onboard-screen');
+    screen.style.transition = 'opacity .6s ease';
+    screen.style.opacity = '0';
+    setTimeout(()=>{ screen.style.display = 'none'; screen.classList.remove('show'); }, 600);
+
+  } catch(e) {
+    console.error('[ONBOARD] Error:', e);
+    btn.textContent = 'はじめる';
+    btn.style.pointerEvents = '';
+    if(typeof showDropToast === 'function') showDropToast('登録に失敗しました。もう一度お試しください');
+  }
+};
+
 // ── ユーザーID取得 or 自動生成 ──
 async function ensureUser(){
+  // 初回登録済みかチェック
+  const onboardDone = localStorage.getItem(ONBOARD_DONE_KEY);
   let uid = localStorage.getItem(USER_ID_KEY);
-  if(!uid){
-    uid = generateUserId();
-    localStorage.setItem(USER_ID_KEY, uid);
+
+  if(!onboardDone || !uid){
+    // 初回 → 登録画面を表示（スプラッシュの後に出す）
+    window._showOnboardAfterSplash = true;
+    if(uid){
+      // UIDあるがオンボード未完了 → 既存ユーザーかチェック
+      try{
+        const resp = await fetch('/api/user/'+uid);
+        if(resp.ok){
+          const data = await resp.json();
+          if(data.name && data.name !== 'ゲスト'){
+            // 既に登録済み（名前設定済み）
+            localStorage.setItem(ONBOARD_DONE_KEY, '1');
+            window._currentUser = data;
+            window._showOnboardAfterSplash = false;
+            return uid;
+          }
+        }
+      }catch(e){}
+    }
+    // オンボード画面は hideSplashScreen 後に表示
+    return uid || '';
   }
-  // サーバーに登録(既存ならそのまま返す)
+
+  // 既存ユーザー → 通常フロー
   try{
     const resp = await fetch('/api/user/register', {
       method:'POST', headers:{'Content-Type':'application/json'},
