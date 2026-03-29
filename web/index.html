@@ -973,29 +973,69 @@ body.loading #chat-area{
 #sit-panel{
   display:none;
   position:absolute;top:42px;left:0;right:0;
-  background:rgba(7,11,24,.92);
-  border-bottom:1px solid rgba(168,216,255,.12);
-  padding:12px;z-index:200;
-  backdrop-filter:blur(24px);
+  background:linear-gradient(180deg,rgba(7,11,24,.96) 0%,rgba(10,6,28,.96) 100%);
+  border-bottom:1px solid rgba(168,216,255,.15);
+  padding:14px 12px 18px;z-index:200;
+  backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
 }
-#sit-panel.open{display:block;}
-.sit-header{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
-.sit-bar{width:2px;height:13px;background:rgba(168,216,255,.6);border-radius:1px;}
+#sit-panel.open{display:block;animation:sitPanelIn .25s ease;}
+@keyframes sitPanelIn{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:translateY(0);}}
+.sit-header{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.sit-bar{width:2px;height:13px;background:linear-gradient(180deg,rgba(168,216,255,.8),rgba(140,100,255,.4));border-radius:1px;}
 .sit-title{font-size:10px;letter-spacing:2px;color:rgba(168,216,255,.7);}
-.sit-grid{display:flex;flex-wrap:wrap;gap:6px;}
+.sit-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
 .sit-item{
-  display:flex;align-items:center;gap:6px;
-  padding:7px 11px;border-radius:10px;cursor:pointer;
-  background:rgba(168,216,255,.04);
-  border:1px solid rgba(168,216,255,.12);
-  transition:all .2s;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:12px 6px 10px;border-radius:14px;cursor:pointer;
+  background:linear-gradient(160deg,rgba(168,216,255,.06),rgba(140,100,255,.04));
+  border:1px solid rgba(168,216,255,.1);
+  transition:all .25s;position:relative;overflow:hidden;
   -webkit-tap-highlight-color:transparent;
 }
-.sit-item:hover,.sit-item.active{background:rgba(168,216,255,.12);border-color:rgba(168,216,255,.5);}
-.sit-item-emoji{font-size:15px;}
-.sit-item-name{font-size:11px;color:rgba(220,238,255,.8);}
-.sit-item.active .sit-item-name{color:#a8d8ff;font-weight:600;}
-.sit-item-sub{font-size:8px;color:rgba(168,216,255,.4);letter-spacing:.5px;}
+.sit-item::before{
+  content:'';position:absolute;inset:0;border-radius:14px;
+  background:radial-gradient(ellipse at 50% 0%,var(--sit-glow,rgba(168,216,255,.08)),transparent 70%);
+  opacity:0;transition:opacity .3s;pointer-events:none;
+}
+.sit-item:hover::before,.sit-item.active::before{opacity:1;}
+.sit-item:hover,.sit-item.active{
+  background:linear-gradient(160deg,rgba(168,216,255,.15),rgba(140,100,255,.1));
+  border-color:rgba(168,216,255,.45);
+  transform:translateY(-2px);
+  box-shadow:0 4px 16px rgba(100,160,255,.15);
+}
+.sit-item:active{transform:translateY(0) scale(.96);}
+.sit-item-emoji{font-size:22px;transition:transform .3s;}
+.sit-item:hover .sit-item-emoji,.sit-item.active .sit-item-emoji{transform:scale(1.15);}
+.sit-item-info{text-align:center;}
+.sit-item-name{font-size:10px;color:rgba(220,238,255,.85);font-weight:700;line-height:1.3;}
+.sit-item.active .sit-item-name{color:#a8d8ff;}
+.sit-item-sub{font-size:7px;color:rgba(168,216,255,.35);letter-spacing:.5px;font-weight:600;}
+/* ロック状態 */
+.sit-item.locked{
+  background:linear-gradient(160deg,rgba(40,30,60,.4),rgba(20,15,35,.5));
+  border:1px dashed rgba(100,80,160,.2);
+  cursor:default;pointer-events:none;
+}
+.sit-item.locked::after{
+  content:'';position:absolute;inset:0;border-radius:14px;
+  background:repeating-linear-gradient(45deg,transparent,transparent 4px,rgba(60,40,100,.08) 4px,rgba(60,40,100,.08) 8px);
+  pointer-events:none;
+}
+.sit-item.locked .sit-item-emoji{font-size:18px;filter:none;}
+.sit-item.locked .sit-item-name{color:rgba(140,120,200,.35);font-size:9px;}
+.sit-item.locked .sit-item-sub{color:rgba(100,80,160,.25);font-size:7px;}
+.sit-lock-badge{
+  position:absolute;top:4px;right:4px;
+  width:16px;height:16px;border-radius:50%;
+  background:rgba(80,60,140,.4);border:1px solid rgba(100,80,160,.3);
+  display:flex;align-items:center;justify-content:center;
+  font-size:8px;
+}
+.sit-unlock-hint{
+  font-size:7px;color:rgba(140,120,200,.3);margin-top:2px;
+  font-weight:600;letter-spacing:.3px;
+}
 
 /* ══════════════════════════════════════
    ミニルーム / バトル / ショップ
@@ -1386,14 +1426,65 @@ body.model-browse-open #miniroom-nav-btn{
   background:rgba(2,4,12,.92);
   backdrop-filter:blur(12px);
 }
+#battle-modal .battle-stage-bg{
+  position:absolute;inset:0;z-index:0;
+  background-size:cover;background-position:center;
+  opacity:.25;pointer-events:none;
+  filter:blur(2px);
+}
 #battle-modal::before{
-  content:'';position:absolute;inset:0;pointer-events:none;
+  content:'';position:absolute;inset:0;pointer-events:none;z-index:1;
   background-image:
     linear-gradient(rgba(0,200,255,.03) 1px,transparent 1px),
     linear-gradient(90deg,rgba(0,200,255,.03) 1px,transparent 1px);
   background-size:30px 30px;
 }
 #battle-modal.show{display:flex;}
+
+/* バトル内ステージ表示 */
+.battle-stage-info{
+  display:flex;align-items:center;gap:8px;
+  padding:4px 10px;margin-bottom:2px;
+  border-radius:8px;
+  background:linear-gradient(135deg,rgba(0,0,0,.3),rgba(0,0,0,.15));
+  border:1px solid rgba(100,200,255,.12);z-index:2;position:relative;
+}
+.battle-stage-emoji{font-size:16px;}
+.battle-stage-name{font-size:11px;font-weight:700;color:rgba(200,220,255,.85);letter-spacing:.5px;}
+.battle-stage-sub{font-size:9px;color:rgba(140,180,255,.45);margin-left:auto;font-weight:600;}
+.battle-boss-badge{
+  display:inline-block;padding:1px 6px;border-radius:4px;
+  background:linear-gradient(135deg,rgba(255,60,60,.3),rgba(200,40,40,.15));
+  border:1px solid rgba(255,80,80,.3);
+  font-size:8px;font-weight:800;color:rgba(255,120,120,.9);letter-spacing:1px;
+  margin-left:6px;
+}
+
+/* ルーム内ステージ進行表示 */
+#mr-stage-progress{
+  position:absolute;top:8px;left:8px;right:8px;
+  display:flex;gap:4px;z-index:20;
+  padding:6px 10px;border-radius:10px;
+  background:rgba(0,0,0,.45);backdrop-filter:blur(6px);
+  border:1px solid rgba(100,200,255,.1);
+}
+.mr-stage-dot{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+  cursor:pointer;transition:all .2s;opacity:.5;
+}
+.mr-stage-dot.active{opacity:1;}
+.mr-stage-dot.cleared{opacity:.85;}
+.mr-stage-dot-icon{font-size:14px;filter:grayscale(.8);}
+.mr-stage-dot.active .mr-stage-dot-icon,.mr-stage-dot.cleared .mr-stage-dot-icon{filter:none;}
+.mr-stage-dot-bar{
+  width:100%;height:3px;border-radius:2px;
+  background:rgba(100,100,120,.3);
+}
+.mr-stage-dot.cleared .mr-stage-dot-bar{background:linear-gradient(90deg,rgba(80,255,160,.7),rgba(0,200,100,.5));}
+.mr-stage-dot.active .mr-stage-dot-bar{background:linear-gradient(90deg,rgba(100,180,255,.7),rgba(60,120,255,.5));animation:pulse 2s infinite;}
+.mr-stage-dot-name{font-size:7px;color:rgba(180,200,255,.5);font-weight:700;white-space:nowrap;}
+.mr-stage-dot.active .mr-stage-dot-name{color:rgba(100,200,255,.9);}
+.mr-stage-dot.cleared .mr-stage-dot-name{color:rgba(80,255,160,.7);}
 
 #battle-box{
   width:min(94vw,380px);
@@ -1406,7 +1497,7 @@ body.model-browse-open #miniroom-nav-btn{
     inset 0 1px 0 rgba(0,200,255,.15),
     inset 0 -1px 0 rgba(0,200,255,.08);
   display:flex;flex-direction:column;gap:10px;
-  position:relative;
+  position:relative;z-index:2;
   animation:mrCyberIn .25s ease;
 }
 /* コーナーデコ */
@@ -2596,7 +2687,7 @@ textarea.mh-input{
 
 /* ── ランキングモーダル ── */
 #ranking-modal{
-  position:fixed;inset:0;z-index:500;
+  position:fixed;inset:0;z-index:9000;
   display:none;flex-direction:column;
   background:linear-gradient(160deg,#020610 0%,#060418 50%,#020810 100%);
   padding-top:env(safe-area-inset-top);
@@ -2678,14 +2769,17 @@ textarea.mh-input{
 #ranking-btn{
   position:absolute;top:34px;left:10px;
   z-index:15;
-  display:flex;align-items:center;gap:3px;
-  padding:2px 8px;border-radius:10px;
-  background:rgba(255,200,60,.06);border:1px solid rgba(255,200,60,.1);
+  display:flex;align-items:center;gap:5px;
+  padding:6px 14px;border-radius:12px;
+  background:linear-gradient(135deg,rgba(255,200,60,.22),rgba(255,160,40,.15));
+  border:1px solid rgba(255,200,60,.35);
   cursor:pointer;transition:all .2s;
+  box-shadow:0 2px 10px rgba(255,200,60,.2), inset 0 1px 0 rgba(255,255,255,.08);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
 }
-#ranking-btn:active{background:rgba(255,200,60,.15);}
-#ranking-btn .material-symbols-rounded{font-size:11px;color:rgba(255,200,60,.45);}
-#ranking-btn .rank-label{font-size:8px;color:rgba(255,200,60,.4);font-weight:600;letter-spacing:.3px;}
+#ranking-btn:active{background:rgba(255,200,60,.35);transform:scale(.95);}
+#ranking-btn .material-symbols-rounded{font-size:15px;color:rgba(255,220,80,.95);text-shadow:0 0 6px rgba(255,200,60,.4);}
+#ranking-btn .rank-label{font-size:10px;color:rgba(255,230,120,1);font-weight:800;letter-spacing:.8px;text-shadow:0 1px 3px rgba(0,0,0,.5);}
 
 /* チャット中モデル切替バナー */
 .model-switch-banner{
@@ -3154,7 +3248,9 @@ textarea.mh-input{
   <div id="sit-panel">
     <div class="sit-header">
       <div class="sit-bar"></div>
-      <div class="sit-title">SITUATION SELECT</div>
+      <div class="sit-title">DESTINATION SELECT</div>
+      <div style="flex:1;"></div>
+      <div style="font-size:8px;color:rgba(168,216,255,.3);font-weight:600;letter-spacing:.5px;" id="sit-count-label"></div>
     </div>
     <div class="sit-grid" id="sit-grid"></div>
   </div>
@@ -3346,12 +3442,12 @@ function getDailyVideoSrc(){
 }
 
 const SITUATIONS = [
-  { id:'daily',      emoji:'🌸', name:'日常',        sub:'DAILY',     prompt:'あなたはフレンドリーで元気なVtuber、アルエです。' },
-  { id:'date_park',  emoji:'🌺', name:'公園デート',  sub:'DATE·PARK', prompt:'あなたは好きな人と桜の公園でデート中のアルエです。' },
-  { id:'date_cafe',  emoji:'☕', name:'カフェデート', sub:'DATE·CAFE', prompt:'あなたは好きな人とカフェでデート中のアルエです。' },
-  { id:'date_eve',   emoji:'🌅', name:'夕暮れ',      sub:'DATE·EVE',  prompt:'あなたは好きな人と夕日を見ているアルエです。' },
-  { id:'festival',   emoji:'🎆', name:'夏祭り',      sub:'FESTIVAL',  prompt:'あなたは好きな人と夏祭りに来ている浴衣姿のアルエです。' },
-  { id:'rainy',      emoji:'🌧️', name:'雨の放課後',  sub:'RAINY',     prompt:'あなたは雨の日に好きな人と相合い傘をしているアルエです。' },
+  { id:'daily',      emoji:'🌸', name:'日常',         sub:'DAILY',       prompt:'あなたはフレンドリーで元気なVtuber、アルエです。', unlock:0, color:'#ffa8d8' },
+  { id:'date_cafe',  emoji:'☕', name:'カフェデート', sub:'DATE·CAFE',   prompt:'あなたは好きな人とカフェでデート中のアルエです。ラテアートが可愛い。', unlock:0, color:'#d4a574' },
+  { id:'date_forest',emoji:'🌲', name:'森林デート',   sub:'DATE·FOREST', prompt:'あなたは好きな人と神秘的な森を散策中のアルエです。木漏れ日が綺麗で、鳥のさえずりが聞こえます。', unlock:1, color:'#4eff90' },
+  { id:'date_ocean', emoji:'🌊', name:'水族館デート', sub:'DATE·AQUA',   prompt:'あなたは好きな人と美しい水族館でデート中のアルエです。クラゲの光が幻想的です。', unlock:2, color:'#40c0ff' },
+  { id:'date_hotspring',emoji:'♨️',name:'温泉デート', sub:'DATE·SPA',    prompt:'あなたは好きな人と温泉旅行中のアルエです。露天風呂からの景色が綺麗です。', unlock:3, color:'#ff6040' },
+  { id:'date_star',  emoji:'🌌', name:'天体観測デート',sub:'DATE·STAR',   prompt:'あなたは好きな人とプラネタリウムでデート中のアルエです。満天の星が美しくロマンチックな雰囲気。', unlock:4, color:'#c080ff' },
 ];
 
 const EXPR_MAP = {happy:'Shine',love:'Heart',shy:'Cheek',sad:'Cry',surprised:'Sweat',angry:'Anger',neutral:null};
@@ -3395,6 +3491,59 @@ function getAbsenceInfo(){
   if(diffD < 7)   return { absent: true, hours: Math.floor(diffH), days: diffD, msg: `ユーザーが${diffD}日も来なかった！かなり寂しかった。泣きそうになりながら「忘れてなかった…？」と聞く。でも来てくれて嬉しい。` };
   return                  { absent: true, hours: Math.floor(diffH), days: diffD, msg: `ユーザーが${diffD}日間も来なかった！ずっとずっと待ってた。「もう来てくれないのかと思った…」と半泣き。再会がとにかく嬉しい。ぎゅっとしたい。` };
 }
+
+/* ══════════════════════════════
+   画像リサイズユーティリティ
+══════════════════════════════ */
+window.resizeImage = function(file, maxSize, quality, callback){
+  // maxSize: 最大幅/高さ(px), quality: JPEG品質(0-1), callback(blob, dataUrl)
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const img = new Image();
+    img.onload = function(){
+      const canvas = document.createElement('canvas');
+      let w = img.width, h = img.height;
+      if(w > maxSize || h > maxSize){
+        if(w > h){ h = Math.round(h * maxSize / w); w = maxSize; }
+        else { w = Math.round(w * maxSize / h); h = maxSize; }
+      }
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(function(blob){
+        const dr = new FileReader();
+        dr.onload = function(){ callback(blob, dr.result); };
+        dr.readAsDataURL(blob);
+      }, 'image/webp', quality || 0.85);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+};
+
+// 正方形クロップ+リサイズ（アイコン用）
+window.resizeSquareIcon = function(file, size, callback){
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const img = new Image();
+    img.onload = function(){
+      const canvas = document.createElement('canvas');
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      // 中央からクロップ
+      const s = Math.min(img.width, img.height);
+      const sx = (img.width - s) / 2, sy = (img.height - s) / 2;
+      ctx.drawImage(img, sx, sy, s, s, 0, 0, size, size);
+      canvas.toBlob(function(blob){
+        const dr = new FileReader();
+        dr.onload = function(){ callback(blob, dr.result); };
+        dr.readAsDataURL(blob);
+      }, 'image/webp', 0.85);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+};
 
 /* ══════════════════════════════
    状態
@@ -3989,20 +4138,26 @@ function setBG(situId){
    SITUATION UI
 ══════════════════════════════ */
 (function buildSitGrid(){
-  const grid=document.getElementById('sit-grid');
-  SITUATIONS.forEach(s=>{
-    const el=document.createElement('div');
-    el.className='sit-item'+(s.id===situation.id?' active':'');
-    el.dataset.id=s.id;
-    el.innerHTML=`
-      <div class="sit-item-emoji">${s.emoji}</div>
-      <div class="sit-item-info">
-        <div class="sit-item-name">${s.name}</div>
-        <div class="sit-item-sub">${s.sub}</div>
-      </div>`;
-    el.onclick=()=>{ playSE_click(); selectSituation(s); };
-    grid.appendChild(el);
-  });
+  // ステージ解放を反映したデート選択肢を構築
+  if(typeof refreshSitGrid === 'function'){
+    refreshSitGrid();
+  } else {
+    // フォールバック
+    const grid=document.getElementById('sit-grid');
+    SITUATIONS.forEach(s=>{
+      const el=document.createElement('div');
+      el.className='sit-item'+(s.id===situation.id?' active':'');
+      el.dataset.id=s.id;
+      el.innerHTML=`
+        <div class="sit-item-emoji">${s.emoji}</div>
+        <div class="sit-item-info">
+          <div class="sit-item-name">${s.name}</div>
+          <div class="sit-item-sub">${s.sub}</div>
+        </div>`;
+      el.onclick=()=>{ playSE_click(); selectSituation(s); };
+      grid.appendChild(el);
+    });
+  }
 })();
 
 function toggleSitPanel(){
@@ -5536,6 +5691,8 @@ window.addEventListener('load',function(){
   <!-- ルーム本体 -->
   <div id="mr-room">
     <div id="mr-room-bg"></div>
+    <!-- ステージ進行表示 -->
+    <div id="mr-stage-progress"></div>
     <!-- キャラセリフ吹き出し -->
     <div id="mr-speech-bubble">
       <div id="mr-speech-inner">
@@ -5591,7 +5748,13 @@ window.addEventListener('load',function(){
      バトルモーダル
 ════════════════════════════════════════ -->
 <div id="battle-modal">
+  <div class="battle-stage-bg" id="battle-stage-bg"></div>
   <div id="battle-box">
+    <div class="battle-stage-info" id="battle-stage-info" style="display:none;">
+      <span class="battle-stage-emoji" id="battle-stage-emoji"></span>
+      <span class="battle-stage-name" id="battle-stage-name"></span>
+      <span class="battle-stage-sub" id="battle-stage-sub"></span>
+    </div>
     <div class="battle-title">// COMBAT SYSTEM //</div>
     <div class="battle-field">
       <div class="battle-fighter" id="bf-player">
@@ -5662,6 +5825,48 @@ const ENEMY_IMGS = [
   'img/enemies/enemy7.png',
   'img/enemies/enemy8.png',
 ];
+
+// ── 5ステージシステム ──
+const STAGES = [
+  { id:1, name:'魔法の森',   sub:'Enchanted Forest', bg:'img/stages/stage1_forest.webp',  color:'#4eff90', emoji:'🌲',
+    dateSit:{ id:'date_forest', emoji:'🌲', name:'森林デート',   sub:'DATE·FOREST', prompt:'あなたは好きな人と神秘的な森を散策中のアルエです。木漏れ日が綺麗で、鳥のさえずりが聞こえます。' }},
+  { id:2, name:'深海遺跡',   sub:'Ocean Ruins',      bg:'img/stages/stage2_ocean.webp',   color:'#40c0ff', emoji:'🌊',
+    dateSit:{ id:'date_ocean', emoji:'🌊', name:'水族館デート', sub:'DATE·AQUA',   prompt:'あなたは好きな人と美しい水族館でデート中のアルエです。クラゲの光が幻想的です。' }},
+  { id:3, name:'炎の火山',   sub:'Volcanic Mountain', bg:'img/stages/stage3_volcano.webp', color:'#ff6040', emoji:'🌋',
+    dateSit:{ id:'date_hotspring', emoji:'♨️', name:'温泉デート', sub:'DATE·SPA',   prompt:'あなたは好きな人と温泉旅行中のアルエです。露天風呂からの景色が綺麗です。' }},
+  { id:4, name:'凍てつく氷河', sub:'Frozen Glacier',   bg:'img/stages/stage4_glacier.webp', color:'#80e0ff', emoji:'❄️',
+    dateSit:{ id:'date_star', emoji:'🌌', name:'天体観測デート', sub:'DATE·STAR',   prompt:'あなたは好きな人とプラネタリウムでデート中のアルエです。満天の星が美しくロマンチックな雰囲気。' }},
+  { id:5, name:'宇宙の果て', sub:'Cosmic Void',       bg:'img/stages/stage5_space.webp',   color:'#c080ff', emoji:'🚀',
+    dateSit: null },
+];
+
+const BOSSES = [
+  {name:'森の守護者トレント', emoji:'🌳', stage:1, hp:50,  atk:6,  dfs:3,  exp:30, gold:50,  lv:3},
+  {name:'海蛇リヴァイアサン', emoji:'🐍', stage:2, hp:90,  atk:10, dfs:5,  exp:50, gold:80,  lv:5},
+  {name:'炎竜イフリート',     emoji:'🐉', stage:3, hp:140, atk:14, dfs:8,  exp:80, gold:120, lv:7},
+  {name:'氷帝フロストギガス', emoji:'🧊', stage:4, hp:200, atk:18, dfs:11, exp:120,gold:180, lv:9},
+  {name:'星喰いコスモヴォイド',emoji:'🌌', stage:5, hp:300, atk:24, dfs:14, exp:200,gold:300, lv:12},
+];
+
+// ステージ別通常敵
+const STAGE_ENEMIES = [
+  // Stage 1: 森林
+  [{name:'カフェラテちゃん', emoji:'☕', img:'img/enemies/enemy1.png', hp:10, atk:2, dfs:1, exp:6, gold:10, lv:1},
+   {name:'ハニベアちゃん',   emoji:'🐻', img:'img/enemies/enemy2.png', hp:16, atk:3, dfs:1, exp:9, gold:14, lv:2}],
+  // Stage 2: 海
+  [{name:'ぷるるんゼリー', emoji:'🫧', img:'img/enemies/enemy3.png', hp:22, atk:4, dfs:2, exp:14, gold:20, lv:3},
+   {name:'流星のソラ',     emoji:'⭐', img:'img/enemies/enemy4.png', hp:30, atk:6, dfs:3, exp:18, gold:28, lv:4}],
+  // Stage 3: 火山
+  [{name:'宇宙人オチくん', emoji:'👽', img:'img/enemies/enemy5.png', hp:40, atk:8, dfs:4, exp:24, gold:38, lv:5},
+   {name:'闇の星詠みルナ', emoji:'🌙', img:'img/enemies/enemy6.png', hp:55, atk:10,dfs:5, exp:32, gold:52, lv:6}],
+  // Stage 4: 氷河
+  [{name:'パティシエ・シュガ',emoji:'🍰', img:'img/enemies/enemy7.png', hp:70, atk:13, dfs:7, exp:44, gold:72, lv:7},
+   {name:'竜騎士リューク', emoji:'🐉', img:'img/enemies/enemy8.png', hp:90, atk:16, dfs:9, exp:60, gold:95, lv:8}],
+  // Stage 5: 宇宙
+  [{name:'竜騎士リューク', emoji:'🐉', img:'img/enemies/enemy8.png', hp:120, atk:20, dfs:11, exp:80, gold:130, lv:10},
+   {name:'闇の星詠みルナ', emoji:'🌙', img:'img/enemies/enemy6.png', hp:150, atk:22, dfs:12, exp:100,gold:160, lv:11}],
+];
+
 const ENEMIES = [
   {name:'カフェラテちゃん', emoji:'☕', img:'img/enemies/enemy1.png', hp:10,  atk:2,  dfs:1,  exp:6,  gold:10, lv:1},
   {name:'ハニベアちゃん',   emoji:'🐻', img:'img/enemies/enemy2.png', hp:16,  atk:3,  dfs:1,  exp:9,  gold:14, lv:2},
@@ -5746,6 +5951,9 @@ function defaultData(){
     vp:500, vpMax:500,           // VP(Vポイント)
     vpInitGiven:false,           // 初回500VP付与済みフラグ
     vpLastDailyDate:'',          // 毎日200VPの最終付与日
+    currentStage:1,              // 現在挑戦中のステージ(1-5)
+    clearedStages:[],            // クリア済みステージID配列
+    bossDefeated:{},             // {stageId: true} ボス撃破フラグ
   };
 }
 function saveData(d){ localStorage.setItem(_getMrDataKey(), JSON.stringify(d)); }
@@ -5787,6 +5995,11 @@ if(D.weaponDur === undefined){
   }
   saveData(D);
 }
+
+// 既存セーブデータ互換: ステージフィールドがなければ追加
+if(D.currentStage === undefined) D.currentStage = 1;
+if(!D.clearedStages) D.clearedStages = [];
+if(!D.bossDefeated) D.bossDefeated = {};
 
 /* ══════════════════════════════
    VP (Vポイント) システム
@@ -5941,13 +6154,78 @@ function updateStatsUI(){
   }
   const stmVal = document.getElementById('mr-stamina-val');
   if(stmVal) stmVal.textContent = D.stamina+'/'+D.staminaMax;
-  // バトルボタン（スタミナ無限）
+  // バトルボタン（ステージ表示付き）
   const btn = document.getElementById('mr-battle-btn');
   if(btn){
-    btn.textContent = 'BATTLE  ∞';
+    const stg = STAGES[Math.max(0,(D.currentStage||1)-1)];
+    const allCleared = D.clearedStages && D.clearedStages.length >= STAGES.length;
+    btn.textContent = allCleared ? 'BATTLE ∞ 🏆' : `BATTLE ${stg.emoji} S${D.currentStage||1}`;
     btn.disabled = false;
   }
+  // ステージ進行UIも更新
+  renderStageProgress();
 }
+
+/* ── ステージ進行表示 ── */
+function renderStageProgress(){
+  const wrap = document.getElementById('mr-stage-progress');
+  if(!wrap) return;
+  if(!D.clearedStages) D.clearedStages = [];
+  if(!D.bossDefeated) D.bossDefeated = {};
+  if(!D.currentStage) D.currentStage = 1;
+  wrap.innerHTML = STAGES.map(st=>{
+    const cleared = D.clearedStages.includes(st.id);
+    const active = st.id === D.currentStage && !cleared;
+    const cls = cleared ? 'cleared' : (active ? 'active' : '');
+    return `<div class="mr-stage-dot ${cls}" title="${st.name}${cleared?' ✅':active?' (挑戦中)':' 🔒'}">
+      <div class="mr-stage-dot-icon">${st.emoji}</div>
+      <div class="mr-stage-dot-bar"></div>
+      <div class="mr-stage-dot-name">${cleared?'✓':''} ${st.id}</div>
+    </div>`;
+  }).join('');
+}
+window.renderStageProgress = renderStageProgress;
+
+/* ── デート選択肢リフレッシュ（ステージ解放反映） ── */
+function refreshSitGrid(){
+  const grid = document.getElementById('sit-grid');
+  if(!grid) return;
+  if(!D.clearedStages) D.clearedStages = [];
+  grid.innerHTML = '';
+  let unlocked = 0;
+  SITUATIONS.forEach(s=>{
+    const unlockStage = s.unlock || 0;
+    const isLocked = unlockStage > 0 && !D.clearedStages.includes(unlockStage);
+    if(!isLocked) unlocked++;
+    const el = document.createElement('div');
+    el.className = 'sit-item' + (s.id===situation.id?' active':'') + (isLocked?' locked':'');
+    el.dataset.id = s.id;
+    const glowColor = s.color || 'rgba(168,216,255,.08)';
+    if(!isLocked) el.style.setProperty('--sit-glow', glowColor+'33');
+    if(isLocked){
+      el.innerHTML = `
+        <div class="sit-lock-badge">🔒</div>
+        <div class="sit-item-emoji">❓</div>
+        <div class="sit-item-info">
+          <div class="sit-item-name">${s.name}</div>
+          <div class="sit-unlock-hint">STAGE ${unlockStage} CLEAR</div>
+        </div>`;
+    } else {
+      el.innerHTML = `
+        <div class="sit-item-emoji">${s.emoji}</div>
+        <div class="sit-item-info">
+          <div class="sit-item-name">${s.name}</div>
+          <div class="sit-item-sub">${s.sub}</div>
+        </div>`;
+      el.onclick = ()=>{ playSE_click(); selectSituation(s); };
+    }
+    grid.appendChild(el);
+  });
+  // カウントラベル更新
+  const label = document.getElementById('sit-count-label');
+  if(label) label.textContent = unlocked + '/' + SITUATIONS.length + ' UNLOCKED';
+}
+window.refreshSitGrid = refreshSitGrid;
 
 /* ── 経験値加算（チャットから呼ぶ） ── */
 window.addChatExp = function(amount){
@@ -6440,22 +6718,51 @@ window.openBattle = function(){
   document.getElementById('battle-log').innerHTML = '';
   setBattleActionsDisabled(false);
   const s = calcStats();
-  // 適正レベルの敵をランダム選択（LVで絞る）
-  const maxLv = Math.max(1, Math.min(D.lv+2, ENEMIES.length));
-  const pool = ENEMIES.filter(e=>e.lv<=maxLv);
-  const enemy = JSON.parse(JSON.stringify(pool[Math.floor(Math.random()*pool.length)]));
+
+  // ── ステージシステム統合 ──
+  const stageIdx = Math.max(0, Math.min((D.currentStage||1)-1, STAGES.length-1));
+  const stage = STAGES[stageIdx];
+  const isBossFight = !D.bossDefeated[stage.id] && D.battleCount > 0 && (D.battleCount % 3 === 0);
+  let enemy;
+
+  if(isBossFight){
+    // ボス戦
+    const boss = BOSSES.find(b=>b.stage===stage.id) || BOSSES[stageIdx];
+    enemy = JSON.parse(JSON.stringify(boss));
+    enemy.img = 'img/stages/bosses.webp';
+    enemy.isBoss = true;
+  } else {
+    // 通常敵（ステージ別）
+    const stageEnemies = STAGE_ENEMIES[stageIdx] || STAGE_ENEMIES[0];
+    enemy = JSON.parse(JSON.stringify(stageEnemies[Math.floor(Math.random()*stageEnemies.length)]));
+    enemy.isBoss = false;
+  }
 
   _battle = {
     playerMaxHp: s.hp, playerHp: s.hp, playerMp: s.mp,
     enemyMaxHp: enemy.hp, enemyHp: enemy.hp,
     enemy, stats: s, over: false,
+    stageId: stage.id, isBoss: isBossFight,
   };
 
-  // 敵画像をセット（各敵固有 or ランダム）
+  // ステージ背景を設定
+  const bgEl = document.getElementById('battle-stage-bg');
+  if(bgEl) bgEl.style.backgroundImage = 'url('+stage.bg+')';
+
+  // ステージ情報表示
+  const stageInfo = document.getElementById('battle-stage-info');
+  if(stageInfo){
+    stageInfo.style.display = 'flex';
+    document.getElementById('battle-stage-emoji').textContent = stage.emoji;
+    document.getElementById('battle-stage-name').textContent = 'STAGE '+stage.id+' '+stage.name;
+    document.getElementById('battle-stage-sub').innerHTML = stage.sub + (isBossFight ? '<span class="battle-boss-badge">BOSS</span>' : '');
+  }
+
+  // 敵画像をセット
   const enemyImgEl = document.getElementById('bf-enemy-img');
   const enemyImg = enemy.img || ENEMY_IMGS[Math.floor(Math.random()*ENEMY_IMGS.length)];
   if(enemyImgEl){ enemyImgEl.src = enemyImg; enemyImgEl.alt = enemy.name; }
-  document.getElementById('bf-enemy-name').textContent  = enemy.name + ' LV'+enemy.lv;
+  document.getElementById('bf-enemy-name').textContent  = (isBossFight?'👑 ':'') + enemy.name + ' LV'+enemy.lv;
   // プレイヤー画像を現在のモデルのSD画像に更新
   const bfPlayerImg = document.getElementById('bf-player-img');
   if(bfPlayerImg){
@@ -6472,7 +6779,7 @@ window.openBattle = function(){
   }
   updateBattleHP();
   clearBattleLog();
-  addBattleLog(`${enemy.name}が現れた！`);
+  addBattleLog(`【${stage.name}】${isBossFight?'⚠️ ボス':''}${enemy.name}が現れた！`);
 
   // スキルボタン（装備スキルがあれば有効化）
   const wepId = D.equip.weapon;
@@ -6631,10 +6938,40 @@ function showBattleResult(win, fled){
     const expGain  = _battle.enemy.exp;
     D.gold += goldGain;
     addChatExp(expGain);
+
+    // ── ボス撃破→ステージクリア処理 ──
+    let stageMsg = '';
+    if(_battle.isBoss && _battle.stageId){
+      if(!D.bossDefeated) D.bossDefeated = {};
+      D.bossDefeated[_battle.stageId] = true;
+      if(!D.clearedStages) D.clearedStages = [];
+      if(!D.clearedStages.includes(_battle.stageId)){
+        D.clearedStages.push(_battle.stageId);
+        const stage = STAGES.find(s=>s.id===_battle.stageId);
+        stageMsg = `\n🎉 ${stage?stage.name:'ステージ'} クリア！`;
+        // 新しいデート先解放通知
+        if(stage && stage.dateSit){
+          stageMsg += `\n💕 ${stage.dateSit.name} が解放されました！`;
+        }
+        // 次のステージへ進む
+        if(D.currentStage < STAGES.length){
+          D.currentStage = Math.min(D.currentStage + 1, STAGES.length);
+          const nextStage = STAGES[D.currentStage-1];
+          stageMsg += `\n→ STAGE ${nextStage.id}: ${nextStage.name} が開放！`;
+        } else {
+          stageMsg += '\n🏆 全ステージクリア！おめでとう！';
+        }
+      }
+    }
+
     saveData(D);
     resultTitle.textContent = '✨ WIN!';
     resultTitle.className = 'battle-result-title win';
-    resultReward.textContent = `+${goldGain}G  +${expGain}EXP 獲得！`;
+    resultReward.innerHTML = `+${goldGain}G  +${expGain}EXP 獲得！` + (stageMsg ? '<div style="margin-top:4px;font-size:10px;color:rgba(80,255,160,.9);line-height:1.6;">'+stageMsg.replace(/\n/g,'<br>')+'</div>' : '');
+    // ステージUIを更新
+    if(typeof renderStageProgress === 'function') renderStageProgress();
+    // デート選択肢を更新
+    if(typeof refreshSitGrid === 'function') refreshSitGrid();
   } else if(fled){
     saveData(D);
     resultTitle.textContent = '💨 FLED';
@@ -7336,16 +7673,15 @@ window._onboardIconFile = null;
 
 window.onObIconSelect = function(input){
   if(!input.files[0]) return;
-  window._onboardIconFile = input.files[0];
-  const reader = new FileReader();
-  reader.onload = function(e){
+  // 256px正方形にリサイズ
+  window.resizeSquareIcon(input.files[0], 256, function(blob, dataUrl){
+    window._onboardIconFile = new File([blob], 'icon.webp', {type:'image/webp'});
     const img = document.getElementById('ob-avatar-img');
     const ph = document.getElementById('ob-avatar-placeholder');
-    img.src = e.target.result;
+    img.src = dataUrl;
     img.style.display = '';
     ph.style.display = 'none';
-  };
-  reader.readAsDataURL(input.files[0]);
+  });
 };
 
 window.submitOnboard = async function(){
@@ -7512,6 +7848,9 @@ window.openRanking = async function(){
   const mid = (typeof _activeModelId !== 'undefined') ? _activeModelId : 'arue_default';
   const model = (typeof getActiveModel === 'function') ? getActiveModel() : {name:'来鳥アルエ'};
   document.getElementById('ranking-title').textContent = model.name + ' ランキング';
+  // SD画像がランキングに被らないように非表示
+  const sdDisp = document.getElementById('sd-char-display');
+  if(sdDisp) sdDisp.style.visibility = 'hidden';
   document.getElementById('ranking-modal').classList.add('show');
   _rankMonth = new Date().toISOString().slice(0,7);
   await loadRanking(mid, _rankMonth);
@@ -7519,6 +7858,9 @@ window.openRanking = async function(){
 
 window.closeRanking = function(){
   document.getElementById('ranking-modal').classList.remove('show');
+  // SD画像を再表示
+  const sdDisp = document.getElementById('sd-char-display');
+  if(sdDisp) sdDisp.style.visibility = '';
 };
 
 window.changeRankMonth = async function(delta){
@@ -7549,10 +7891,9 @@ async function loadRanking(modelId, month){
       const iconHtml = r.icon_path
         ? `<img src="${r.icon_path}" onerror="this.outerHTML='<span class=material-symbols-rounded style=font-size:20px;color:rgba(140,100,255,.4)>account_circle</span>'">`
         : '<span class="material-symbols-rounded" style="font-size:20px;color:rgba(140,100,255,.4);">account_circle</span>';
-      const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
       return `
         <div class="rank-row ${cls}">
-          <div class="rank-num">${medal||r.rank}</div>
+          <div class="rank-num">${r.rank}</div>
           <div class="rank-icon">${iconHtml}</div>
           <div class="rank-name">${r.name||'ゲスト'}</div>
           <div class="rank-pts">${r.total_points.toLocaleString()} P</div>
@@ -7589,23 +7930,25 @@ window.onProfileIconSelect = async function(input){
   if(!input.files[0]) return;
   const uid = window._getUserId();
   if(!uid) return;
-  const file = input.files[0];
-  const formData = new FormData();
-  formData.append('file', file);
-  try{
-    const resp = await fetch('/api/user/'+uid+'/icon', {
-      method:'POST', headers:{'X-User-Id': uid}, body: formData
-    });
-    const data = await resp.json();
-    if(data.icon_path){
-      window._currentUser.icon_path = data.icon_path;
-      const img = document.getElementById('up-avatar-img');
-      const ph = document.getElementById('up-avatar-placeholder');
-      img.src = data.icon_path + '?t=' + Date.now(); img.style.display = '';
-      ph.style.display = 'none';
-      showDropToast('アイコンを更新しました');
-    }
-  }catch(e){ showDropToast('アイコンのアップロードに失敗しました'); }
+  // 256px正方形にリサイズしてアップロード
+  window.resizeSquareIcon(input.files[0], 256, async function(blob, dataUrl){
+    const formData = new FormData();
+    formData.append('file', new File([blob], 'icon.webp', {type:'image/webp'}));
+    try{
+      const resp = await fetch('/api/user/'+uid+'/icon', {
+        method:'POST', headers:{'X-User-Id': uid}, body: formData
+      });
+      const data = await resp.json();
+      if(data.icon_path){
+        window._currentUser.icon_path = data.icon_path;
+        const img = document.getElementById('up-avatar-img');
+        const ph = document.getElementById('up-avatar-placeholder');
+        img.src = data.icon_path + '?t=' + Date.now(); img.style.display = '';
+        ph.style.display = 'none';
+        showDropToast('アイコンを更新しました');
+      }
+    }catch(e){ showDropToast('アイコンのアップロードに失敗しました'); }
+  });
 };
 
 window.saveUserProfile = async function(){
@@ -9521,13 +9864,31 @@ window.onImgSelect = function(input, key){
     input.value = '';
     return;
   }
-  const reader = new FileReader();
-  reader.onload = ()=>{
-    _mhDraft[key] = reader.result;
-    _mhDraft[key+'Name'] = f.name;
-    renderStep();
-  };
-  reader.readAsDataURL(f);
+  if(key === 'icon'){
+    // サムネイルは正方形256pxにリサイズ
+    window.resizeSquareIcon(f, 256, function(blob, dataUrl){
+      _mhDraft[key] = dataUrl;
+      _mhDraft[key+'Name'] = f.name;
+      renderStep();
+    });
+  } else if(key === 'sdImg'){
+    // SD画像は最大1024pxにリサイズ(PNGはそのまま)
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      _mhDraft[key] = reader.result;
+      _mhDraft[key+'Name'] = f.name;
+      renderStep();
+    };
+    reader.readAsDataURL(f);
+  } else {
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      _mhDraft[key] = reader.result;
+      _mhDraft[key+'Name'] = f.name;
+      renderStep();
+    };
+    reader.readAsDataURL(f);
+  }
 };
 
 // ── モデル保存（ローディング→チャット画面遷移） ──
